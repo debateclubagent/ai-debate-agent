@@ -3,7 +3,7 @@ import requests
 from typing import List
 import streamlit as st
 
-# 设置 Hugging Face Token（你可以放到 secrets 或 .env）
+# 从 Streamlit Secrets 中获取 Hugging Face Token
 HF_TOKEN = st.secrets["HF_TOKEN"]
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
@@ -39,7 +39,7 @@ class Agent:
         if previous_statements:
             context += "\n以下是上一轮的发言摘要，请参考并回应：\n"
             for s in previous_statements:
-               s = s.split("]:")[1].strip() if "]:" in s else s
+                s = s.split("]:", 1)[1].strip() if "]:" in s else s
                 context += f"- {s}\n"
         prompt = f"你是{self.name}，你的立场是{self.position}。你的任务是帮助推进一个共同目标：“为家长制定AI育儿指南”。{self.system_prompt}\n请你就以下话题阐述你的观点，并参考上一轮的发言：\n话题：{topic}{context}"
         return f"[{self.name} - {self.position}]: {query_model(prompt, self.model_url)}"
