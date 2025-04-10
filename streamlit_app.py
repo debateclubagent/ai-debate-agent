@@ -4,7 +4,7 @@ from typing import List
 import streamlit as st
 
 # 设置 Hugging Face Token（你可以放到 secrets 或 .env）
-HF_TOKEN = "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"
+HF_TOKEN = st.secrets["HF_TOKEN"]
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 # 模型请求函数，支持传入不同模型地址
