@@ -68,7 +68,7 @@ if st.button("开始辩论"):
         Agent("悲观派", "批判者", "你总是强调潜在风险和不确定性，谨慎保守。",
               "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1"),
         Agent("中立派", "分析者", "你注重平衡各种观点，提出客观的分析和对比。",
-              "https://api-inference.huggingface.co/models/meta-llama/Llama-3-8B-Instruct")
+              "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct")
     ]
 
     judge = JudgeAgent("AI评议官", "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1")
