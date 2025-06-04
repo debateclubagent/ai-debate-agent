@@ -53,10 +53,17 @@ def build_black_prompt(question, yellow_viewpoint):
 
 {{
   "card_c": {{
-    "title": "可能被忽略的代价",
+    "title": "问题的反向质疑",
     "content": {{
       "doubt": "⚠️ 我的担忧：...",
-      "trap": "🕳️ 可能的陷阱：..."
+      "evidence": "📌 我的依据：..."
+    }}
+  }},
+  "card_d": {{
+    "title": "谨慎思维方式与训练建议",
+    "content": {{
+      "thinking_path": "🧠 我为什么会这样思考：...",
+      "training_tip": "🧩 你也可以这样练：..."
     }}
   }}
 }}
@@ -124,7 +131,14 @@ if st.button("生成黄帽 + 黑帽分析") and question:
             # 展示黑帽卡片
             st.markdown("""
             <details open>
-            <summary style='font-size: 20px; font-weight: bold;'>⚫ 黑帽 · 潜在风险提示</summary>
+            <summary style='font-size: 20px; font-weight: bold;'>⚫ 黑帽 · 问题的反向质疑</summary>
+            <div style='padding-left: 1em;'>
+            <p>{}</p>
+            <p>{}</p>
+            </div>
+            </details>
+            <details open>
+            <summary style='font-size: 20px; font-weight: bold;'>⚫ 黑帽 · 谨慎思维与训练建议</summary>
             <div style='padding-left: 1em;'>
             <p>{}</p>
             <p>{}</p>
@@ -132,9 +146,11 @@ if st.button("生成黄帽 + 黑帽分析") and question:
             </details>
             """.format(
                 black_json['card_c']['content']['doubt'],
-                black_json['card_c']['content']['trap']
+                black_json['card_c']['content']['evidence'],
+                black_json['card_d']['content']['thinking_path'],
+                black_json['card_d']['content']['training_tip']
             ), unsafe_allow_html=True)
 
         except Exception as e:
             st.error("⚠️ 出错了，请查看异常信息：")
-            st.exception(e)            
+            st.exception(e)
