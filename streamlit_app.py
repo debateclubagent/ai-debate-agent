@@ -84,18 +84,22 @@ def generate_json_from_huggingface(user_question):
         json={"inputs": prompt}
     )
 
-    result = response.json()
-    if isinstance(result, list) and "generated_text" in result[0]:
-        raw_output = result[0]["generated_text"]
-    else:
-        raw_output = result.get("generated_text", "")
+    try:
+        result = response.json()
+    except Exception as e:
+        return {"error": f"接口返回不是 JSON，可能模型未加载完成或服务报错：{e}", "raw": response.text}
+
+    if isinstance(result, dict) and "error" in result:
+        return {"error": f"Hugging Face 模型返回错误：{result['error']}", "raw": result}
+
+    raw_output = result[0]["generated_text"] if isinstance(result, list) and "generated_text" in result[0] else result.get("generated_text", "")
 
     try:
         json_start = raw_output.find("{")
         json_data = json.loads(raw_output[json_start:])
         return json_data
     except Exception as e:
-        return {"error": f"模型输出无法解析：{str(e)}", "raw": raw_output}
+        return {"error": f"模型输出无法解析 JSON：{str(e)}", "raw": raw_output}
 
 # ===== 触发逻辑 =====
 if st.button("生成思维卡片"):
@@ -116,3 +120,4 @@ if st.button("生成思维卡片"):
                 render_card(result["card_a"]["title"], result["card_a"]["content"])
             with col2:
                 render_training_card(result["card_b"]["title"], result["card_b"]["content"])
+
