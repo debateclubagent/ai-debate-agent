@@ -18,7 +18,28 @@ def build_prompt(question):
 
 用户的问题是：**{question}**
 
-请按以下四段进行回答：
+请将你的回答封装为一个 JSON 对象，结构如下：
+
+```
+{
+  "card_a": {
+    "title": "问题的正向判断",
+    "content": {
+      "viewpoint": "🎯 我的观点：...",
+      "evidence": "📚 我的依据：..."
+    }
+  },
+  "card_b": {
+    "title": "思维方式与训练建议",
+    "content": {
+      "thinking_path": "🧠 我为什么会这样思考：...",
+      "training_tip": "🧩 你也可以这样练：..."
+    }
+  }
+}
+```
+
+然后根据以下四段内容撰写：
 
 ---
 
@@ -73,20 +94,24 @@ if st.button("生成回答") and question:
             response = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[
-                    {"role": "system", "content": "你是一个理性乐观的产品思维助理。"},
+                    {"role": "system", "content": "你是一个理性乐观、结构清晰的黄帽思维助理，你的任务是将用户的问题输出为标准 JSON 格式。回答必须符合以下结构，并且只返回 JSON 本体，不要包含 Markdown、注释或额外解释。"},
                     {"role": "user", "content": prompt}
                 ],
                 stream=False
             )
 
             reply = response.choices[0].message.content
-                        # 尝试提取 JSON 对象（从第一个 { 开始）
+
+            # Debug：先展示完整原始返回内容
+            st.subheader("🧾 模型原始输出")
+            st.code(reply)
+
+            # 尝试提取 JSON 对象（从第一个 { 开始）
             try:
                 json_start = reply.find('{')
                 json_str = reply[json_start:].split('```')[0].strip()
                 data = json.loads(json_str)
 
-                # 抽屉卡片式展示
                 with st.container():
                     with st.expander(data['card_a']['title'], expanded=True):
                         st.markdown(data['card_a']['content']['viewpoint'])
@@ -97,8 +122,8 @@ if st.button("生成回答") and question:
                         st.markdown(data['card_b']['content']['training_tip'])
 
             except Exception as e:
-                st.error("⚠️ 无法解析模型输出为 JSON。")
-                st.code(reply)
+                st.error("⚠️ 无法解析模型输出为 JSON，请检查返回格式。")
+                st.exception(e)
 
         except Exception as e:
             st.error("⚠️ 出错了，请查看异常信息：")
