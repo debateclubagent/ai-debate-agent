@@ -3,7 +3,7 @@ import requests
 
 # 加载 secret token
 HF_TOKEN = st.secrets["HF_TOKEN"]
-API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-distilled-squad"
+API_URL = "https://api-inference.huggingface.co/models/DeepSeek-R1-0528-Qwen3-8B"
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 def query(payload):
