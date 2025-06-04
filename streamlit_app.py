@@ -121,4 +121,6 @@ if st.button("生成回答") and question:
                 st.text(reply)
 
         except Exception as e:
-            st.error(f"出错了：{e}")
+            st.error("⚠️ 出错了，请查看下方原始输出：")
+            st.text(reply)
+            st.exception(e)
