@@ -92,7 +92,7 @@ if st.button("生成回答") and question:
             prompt = build_prompt(question)
 
             response = client.chat.completions.create(
-                model="deepseek-chat"  # 你也可以改为 deepseek-reasoner,
+                model="deepseek-chat",  # 你也可以改为 'deepseek-reasoner'
                 messages=[
                     {"role": "system", "content": "你是一个理性乐观的产品思维助理。"},
                     {"role": "user", "content": prompt}
