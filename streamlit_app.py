@@ -3,7 +3,7 @@ import requests
 
 # 🟡 Hugging Face token，建议写在 .streamlit/secrets.toml 里
 HF_TOKEN = st.secrets["HF_TOKEN"]  # 在 secrets.toml 中写：hf_token = "hf_..."
-API_URL = "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"
+API_URL = "https://api-inference.huggingface.co/models/deepseek-ai/DeepSeek-V3"
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 # 🔁 调用模型接口
