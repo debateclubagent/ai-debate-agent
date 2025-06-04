@@ -114,26 +114,4 @@ def build_black_prompt(question, yellow_viewpoint):
 """
     return prompt
 
-def build_blue_prompt(question, yellow_viewpoint, black_doubt):
-    prompt = f"""
-你是“蓝帽思维者”，擅长综合不同帽型的意见，在理性中立的立场上进行决策和总结。
-你的目标是平衡乐观与谨慎，从不同视角中提炼出最值得采取的方向。
 
-用户的问题是：{question}
-黄帽的观点是：{yellow_viewpoint}
-黑帽的质疑是：{black_doubt}
-
-请你在理解两方思维后，生成一个清晰的总结判断，并说明你将如何行动。
-
-请输出 JSON：
-{{
-  "card_e": {{
-    "title": "蓝帽总结与建议",
-    "content": {{
-      "summary": "🧢 我的综合判断：...",
-      "action": "🚀 我的行动建议：..."
-    }}
-  }}
-}}
-"""
-    return prompt
