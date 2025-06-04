@@ -1,54 +1,123 @@
 import streamlit as st
-import requests
+import json
+from openai import OpenAI
+import os
 
-# 🟡 Hugging Face token，建议写在 .streamlit/secrets.toml 里
-HF_TOKEN = st.secrets["HF_TOKEN"]  # 在 secrets.toml 中写：hf_token = "hf_..."
-API_URL = "https://api-inference.huggingface.co/models/Langboat/Mengzi3-8B-Base"
-HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
+# 从 Streamlit secrets 读取 API Key
+api_key = st.secrets["DEEPSEEK_API_KEY"]
 
-# 🔁 调用模型接口
-def query(payload):
-    response = requests.post(API_URL, headers=HEADERS, json=payload)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error(f"❌ 出错啦！状态码：{response.status_code}\n返回内容：{response.text}")
-        return None
+# 初始化 DeepSeek 客户端
+client = OpenAI(
+    api_key=api_key,
+    base_url="https://api.deepseek.com/v1"
+)
 
-# 🧠 Streamlit 页面
-st.set_page_config(page_title="黄帽 Agent 问答", page_icon="🟡")
-st.title("🟡 黄帽 Agent 问答机")
-st.markdown("从正向角度思考问题，发现潜在价值 🌱")
+def build_prompt(question):
+    return f"""
+你是“黄帽思维者”，你擅长从问题中发现积极可能、被低估的好处，以及值得轻试的方向。
+你不否认困难，但你习惯优先问自己：“这里有没有什么地方，是可以带来转机的？”
 
-# ✍️ 用户输入
-question = st.text_input("你想问什么？", value="What is the benefit of free trials?")
-context = st.text_area("提供背景信息（黄帽语气）", height=200, value="""
-Offering a free trial helps users experience value before commitment.
-It lowers risk, builds trust, and encourages user engagement, especially for new users.
-""")
+用户的问题是：**{question}**
 
-# 🚀 触发推理
-if st.button("🎯 获取黄帽回答"):
-    if question.strip() and context.strip():
-        with st.spinner("黄帽 Agent 正在认真思考中..."):
-            # 加入黄帽语气 prompt（Prompt Engineering）
-            enhanced_question = "从积极角度思考：" + question
-            enhanced_context = (
-                "请站在黄帽角度（正向思考、发现价值）来理解这段内容：\n\n"
-                + context
+请按以下四段进行回答：
+
+---
+
+### 🎯 1. 【我的观点】
+
+请说出你对这个问题的积极判断。
+你认为它最可能带来什么好处？你会从哪个角度看它“值得一试”？
+
+---
+
+### 📚 2. 【我的依据】
+
+说明你为什么会这样判断。
+你参考了哪些事实、常识、用户行为、案例或趋势？
+重点在于：**让人看懂你是“理性乐观”，不是瞎乐观。**
+
+---
+
+### 🧠 3. 【我为什么会这样思考】
+
+请从**黄帽的视角**解释你是如何找到这个“积极角度”的。
+
+你可以说明：
+
+* 黄帽通常关注什么（被低估的价值点？能激发正反馈的机制？用户感知入口？）
+* 在这个问题里，你是怎么识别到“值得从希望切入”的机会点的？
+* 这反映了黄帽惯常的什么思维方式？
+
+---
+
+### 🧩 4. 【你也可以这样练】
+
+请提供一个简洁、有指向性的练习建议，帮助用户像黄帽一样思考：
+
+* 如何识别一个“值得轻试”的积极入口？
+* 如何在困难中刻意寻找“有转机的部分”？
+* 如何从局部希望点出发，引导出一个判断过程？
+
+重点在于：**不是套模板，而是训练“看到希望值不值试”的能力。**
+
+请输出以下格式内容（注意是**标准 JSON 对象**，**不是字符串**，不要加转义符号）：
+
+```json
+{
+  "card_a": {
+    "title": "问题的正向判断",
+    "content": {
+      "viewpoint": "🎯 我的观点：...",
+      "evidence": "📚 我的依据：..."
+    }
+  },
+  "card_b": {
+    "title": "思维方式与训练建议",
+    "content": {
+      "thinking_path": "🧠 我为什么会这样思考：...",
+      "training_tip": "🧩 你也可以这样练：..."
+    }
+  }
+}
+```"""
+
+# Streamlit 页面结构
+st.title("🟡 黄帽思维生成器")
+
+question = st.text_area("请输入你的问题：", height=120)
+
+if st.button("生成回答") and question:
+    with st.spinner("正在生成，请稍候..."):
+        try:
+            prompt = build_prompt(question)
+
+            response = client.chat.completions.create(
+                model="deepseek-chat"  # 你也可以改为 deepseek-reasoner,
+                messages=[
+                    {"role": "system", "content": "你是一个理性乐观的产品思维助理。"},
+                    {"role": "user", "content": prompt}
+                ],
+                stream=False
             )
 
-            # 模型调用
-            result = query({
-                "inputs": {
-                    "question": enhanced_question,
-                    "context": enhanced_context
-                }
-            })
+            reply = response.choices[0].message.content
 
-            # 💡 显示结果
-            if result and isinstance(result, dict) and "answer" in result:
-                st.success("🟡 黄帽Agent的回答：")
-                st.write(result["answer"])
-    else:
-        st.warning("⚠️ 请完整输入问题和背景内容！")
+            try:
+                # 截取 JSON 部分
+                json_start = reply.find('{')
+                json_data = json.loads(reply[json_start:])
+
+                st.subheader(json_data["card_a"]["title"])
+                st.markdown(json_data["card_a"]["content"]["viewpoint"])
+                st.markdown(json_data["card_a"]["content"]["evidence"])
+
+                st.subheader(json_data["card_b"]["title"])
+                st.markdown(json_data["card_b"]["content"]["thinking_path"])
+                st.markdown(json_data["card_b"]["content"]["training_tip"])
+
+            except Exception as e:
+                st.error("⚠️ 无法解析返回内容为JSON，请检查模型输出格式。")
+                st.text(reply)
+
+        except Exception as e:
+            st.error(f"出错了：{e}")
