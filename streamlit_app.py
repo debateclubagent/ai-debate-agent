@@ -12,7 +12,7 @@ client = OpenAI(
 )
 
 def build_prompt(question):
-        prompt = f"""
+    prompt = f"""
 你是“黄帽思维者”，你擅长从问题中发现积极可能、被低估的好处，以及值得轻试的方向。
 你不否认困难，但你习惯优先问自己：“这里有没有什么地方，是可以带来转机的？”
 
