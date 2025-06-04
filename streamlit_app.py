@@ -63,9 +63,13 @@ def generate_json_from_huggingface(user_question):
             json={"inputs": prompt},
             timeout=60
         )
-        result = response.json()
+        raw_text = response.text
+        try:
+            result = response.json()
+        except Exception as e:
+            return {"error": f"接口响应非 JSON 格式，可能模型还在加载中或出错。", "raw": raw_text}
     except Exception as e:
-        return {"error": f"接口调用失败或不是 JSON：{e}", "raw": response.text if 'response' in locals() else str(e)}
+        return {"error": f"请求异常：{e}"}
 
     if isinstance(result, dict) and "error" in result:
         return {"error": f"Hugging Face 模型返回错误：{result['error']}", "raw": result}
@@ -90,7 +94,7 @@ if st.button("生成思维卡片"):
         if "error" in result:
             st.error(result["error"])
             with st.expander("查看模型原始输出"):
-                st.code(result["raw"])
+                st.code(result.get("raw", "无返回内容"))
         else:
             col1, col2 = st.columns(2)
             with col1:
