@@ -105,7 +105,7 @@ if st.button("生成回答") and question:
             try:
                 # 截取 JSON 部分
                 json_start = reply.find('{')
-                json_str = reply[json_start:].strip()
+                json_str = reply[json_start:].split('```')[0].strip()
                 json_data = json.loads(json_str)
 
                 st.subheader(json_data["card_a"]["title"])
