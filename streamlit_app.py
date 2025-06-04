@@ -11,7 +11,7 @@ client = OpenAI(
     base_url="https://api.deepseek.com/v1"
 )
 
-def build_prompt(question):
+def build_yellow_prompt(question):
     prompt = f"""
 你是“黄帽思维者”，你擅长从问题中发现积极可能、被低估的好处，以及值得轻试的方向。
 你不否认困难，但你习惯优先问自己：“这里有没有什么地方，是可以带来转机的？”
@@ -36,76 +36,105 @@ def build_prompt(question):
     }}
   }}
 }}
+"""
+    return prompt
 
-请你根据以下四段内容思考并生成 JSON 内容：
+def build_black_prompt(question, yellow_viewpoint):
+    prompt = f"""
+你是“黑帽思维者”，你擅长从问题中识别风险、隐患、失败代价，以及不能被轻易忽视的误判。
+你不唱反调，但你习惯先问：“这里有什么我忽略的风险？”“这个方案失败的代价是否能承受？”
 
-1. 🎯 我的观点：说出你对这个问题的积极判断，你认为它最可能带来什么好处，从哪个角度值得一试。
-2. 📚 我的依据：解释你为何这样判断，引用你熟悉的事实、经验、研究、案例或趋势。
-3. 🧠 我为什么会这样思考：说明黄帽惯常聚焦哪里，你是如何识别机会点的。
-4. 🧩 你也可以这样练：教用户如何训练这种思考方式。
+用户的问题是：{question}
+黄帽给出的观点是：{yellow_viewpoint}
 
-只输出结构规范的 JSON 对象本体。
+请你就着这个乐观判断，给出你的审慎分析，并指出用户可能忽略的盲区。
+
+请将你的回答封装为一个 JSON 对象，结构如下：
+
+{{
+  "card_c": {{
+    "title": "可能被忽略的代价",
+    "content": {{
+      "doubt": "⚠️ 我的担忧：...",
+      "trap": "🕳️ 可能的陷阱：..."
+    }}
+  }}
+}}
 """
     return prompt
 
 # Streamlit 页面结构
-st.title("🟡 黄帽思维生成器")
+st.title("🧠 多帽思维生成器")
 
 question = st.text_area("请输入你的问题：", height=120)
 
-if st.button("生成回答") and question:
+if st.button("生成黄帽 + 黑帽分析") and question:
     with st.spinner("正在生成，请稍候..."):
         try:
-            prompt = build_prompt(question)
-
-            response = client.chat.completions.create(
+            # Step 1: 黄帽回答
+            yellow_prompt = build_yellow_prompt(question)
+            yellow_response = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[
-                    {"role": "system", "content": "你是一个理性乐观、结构清晰的黄帽思维助理，你的任务是将用户的问题输出为标准 JSON 格式。回答必须符合以下结构，并且只返回 JSON 本体，不要包含 Markdown、注释或额外解释。"},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": "你是一个理性乐观、结构清晰的黄帽思维助理，只输出标准 JSON。"},
+                    {"role": "user", "content": yellow_prompt}
                 ],
                 stream=False
             )
+            yellow_reply = yellow_response.choices[0].message.content
+            yellow_json = json.loads(yellow_reply[yellow_reply.find('{'):].split('```')[0].strip())
+            yellow_viewpoint = yellow_json["card_a"]["content"]["viewpoint"]
 
-            reply = response.choices[0].message.content
+            # Step 2: 黑帽跟进
+            black_prompt = build_black_prompt(question, yellow_viewpoint)
+            black_response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": "你是一个审慎思维者，只输出标准 JSON。"},
+                    {"role": "user", "content": black_prompt}
+                ],
+                stream=False
+            )
+            black_reply = black_response.choices[0].message.content
+            black_json = json.loads(black_reply[black_reply.find('{'):].split('```')[0].strip())
 
-            # Debug：先展示完整原始返回内容
-            st.subheader("🧾 模型原始输出")
-            st.code(reply)
+            # 展示黄帽卡片
+            st.markdown("""
+            <details open>
+            <summary style='font-size: 20px; font-weight: bold;'>🟡 黄帽 · 问题的正向判断</summary>
+            <div style='padding-left: 1em;'>
+            <p>{}</p>
+            <p>{}</p>
+            </div>
+            </details>
+            <details open>
+            <summary style='font-size: 20px; font-weight: bold;'>🟡 黄帽 · 思维方式与训练建议</summary>
+            <div style='padding-left: 1em;'>
+            <p>{}</p>
+            <p>{}</p>
+            </div>
+            </details>
+            """.format(
+                yellow_json['card_a']['content']['viewpoint'],
+                yellow_json['card_a']['content']['evidence'],
+                yellow_json['card_b']['content']['thinking_path'],
+                yellow_json['card_b']['content']['training_tip']
+            ), unsafe_allow_html=True)
 
-            # 尝试提取 JSON 对象（从第一个 { 开始）
-            try:
-                json_start = reply.find('{')
-                json_str = reply[json_start:].split('```')[0].strip()
-                data = json.loads(json_str)
-
-                with st.container():
-                    with st.container():
-                        st.markdown(f"""
-                        <details open>
-                        <summary style='font-size: 20px; font-weight: bold;'>📂 问题的正向判断</summary>
-                        <div style='padding-left: 1em; padding-top: 0.5em;'>
-                        <p>{data['card_a']['content']['viewpoint']}</p>
-                        <p>{data['card_a']['content']['evidence']}</p>
-                        </div>
-                        </details>
-                        """, unsafe_allow_html=True)
-
-                    with st.container():
-                        st.markdown(f"""
-                        <details open>
-                        <summary style='font-size: 20px; font-weight: bold;'>📂 思维方式与训练建议</summary>
-                        <div style='padding-left: 1em; padding-top: 0.5em;'>
-                        <p>{data['card_b']['content']['thinking_path']}</p>
-                        <p>{data['card_b']['content']['training_tip']}</p>
-                        </div>
-                        </details>
-                        """, unsafe_allow_html=True)
-
-            except Exception as e:
-                st.error("⚠️ 无法解析模型输出为 JSON，请检查返回格式。")
-                st.exception(e)
+            # 展示黑帽卡片
+            st.markdown("""
+            <details open>
+            <summary style='font-size: 20px; font-weight: bold;'>⚫ 黑帽 · 潜在风险提示</summary>
+            <div style='padding-left: 1em;'>
+            <p>{}</p>
+            <p>{}</p>
+            </div>
+            </details>
+            """.format(
+                black_json['card_c']['content']['doubt'],
+                black_json['card_c']['content']['trap']
+            ), unsafe_allow_html=True)
 
         except Exception as e:
             st.error("⚠️ 出错了，请查看异常信息：")
-            st.exception(e)
+            st.exception(e)            
