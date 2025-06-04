@@ -81,26 +81,26 @@ if st.button("生成回答") and question:
 
                 with st.container():
                     with st.container():
-    st.markdown("""
-        <details open>
-        <summary style='font-size: 20px; font-weight: bold;'>📂 问题的正向判断</summary>
-        <div style='padding-left: 1em; padding-top: 0.5em;'>
-        <p>{}</p>
-        <p>{}</p>
-        </div>
-        </details>
-    """.format(data['card_a']['content']['viewpoint'], data['card_a']['content']['evidence']), unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <details open>
+                        <summary style='font-size: 20px; font-weight: bold;'>📂 问题的正向判断</summary>
+                        <div style='padding-left: 1em; padding-top: 0.5em;'>
+                        <p>{data['card_a']['content']['viewpoint']}</p>
+                        <p>{data['card_a']['content']['evidence']}</p>
+                        </div>
+                        </details>
+                        """, unsafe_allow_html=True)
 
                     with st.container():
-    st.markdown("""
-        <details open>
-        <summary style='font-size: 20px; font-weight: bold;'>📂 思维方式与训练建议</summary>
-        <div style='padding-left: 1em; padding-top: 0.5em;'>
-        <p>{}</p>
-        <p>{}</p>
-        </div>
-        </details>
-    """.format(data['card_b']['content']['thinking_path'], data['card_b']['content']['training_tip']), unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <details open>
+                        <summary style='font-size: 20px; font-weight: bold;'>📂 思维方式与训练建议</summary>
+                        <div style='padding-left: 1em; padding-top: 0.5em;'>
+                        <p>{data['card_b']['content']['thinking_path']}</p>
+                        <p>{data['card_b']['content']['training_tip']}</p>
+                        </div>
+                        </details>
+                        """, unsafe_allow_html=True)
 
             except Exception as e:
                 st.error("⚠️ 无法解析模型输出为 JSON，请检查返回格式。")
