@@ -105,7 +105,8 @@ if st.button("生成回答") and question:
             try:
                 # 截取 JSON 部分
                 json_start = reply.find('{')
-                json_data = json.loads(reply[json_start:])
+                json_str = reply[json_start:].strip()
+                json_data = json.loads(json_str)
 
                 st.subheader(json_data["card_a"]["title"])
                 st.markdown(json_data["card_a"]["content"]["viewpoint"])
@@ -116,7 +117,7 @@ if st.button("生成回答") and question:
                 st.markdown(json_data["card_b"]["content"]["training_tip"])
 
             except Exception as e:
-                st.error("⚠️ 无法解析返回内容为JSON，请检查模型输出格式。")
+                st.error("⚠️ 无法解析为 JSON，请检查模型是否输出了合法 JSON 格式。")
                 st.text(reply)
 
         except Exception as e:
