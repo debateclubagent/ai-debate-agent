@@ -1,34 +1,35 @@
 import streamlit as st
 import requests
-import json
 
-# 设置页面标题
-st.set_page_config(page_title="问答助手")
-st.title("🧠 问答生成器")
-
-# 使用 Streamlit secrets 读取 Hugging Face Token
-API_URL = "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
-headers = {
-    "Authorization": f"Bearer {st.secrets['HF_TOKEN']}"
-}
+# 加载 secret token
+HF_TOKEN = st.secrets["hf_token"]
+API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-distilled-squad"
+HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 def query(payload):
-    response = requests.post(API_URL, headers=headers, json=payload)
-    return response.json()
+    response = requests.post(API_URL, headers=HEADERS, json=payload)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"出错啦！状态码：{response.status_code}，返回内容：{response.text}")
+        return None
 
-# 用户输入问题
-question = st.text_input("请输入你的问题：")
+# Streamlit 页面
+st.title("黄帽 Agent 🌞 在线问答")
 
-if question:
-    with st.spinner("正在调用 Hugging Face 模型生成回答..."):
-        prompt = f"问题：{question}\n请简洁地用中文回答这个问题："
+question = st.text_input("你想问什么？", value="What is the benefit of free trials?")
+context = st.text_area("提供背景信息（黄帽语气）", height=200, value="""
+Offering a free trial helps users experience value before commitment. 
+It lowers risk, builds trust, and encourages user engagement, especially for new users.
+""")
+
+if st.button("💬 获取黄帽回答"):
+    with st.spinner("黄帽 Agent 思考中..."):
         output = query({
-            "inputs": prompt,
-            "options": {"wait_for_model": True}
+            "inputs": {
+                "question": question,
+                "context": context
+            }
         })
-
-        if isinstance(output, list) and 'generated_text' in output[0]:
-            st.subheader("模型回答")
-            st.write(output[0]['generated_text'].replace(prompt, "").strip())
-        else:
-            st.error("❌ 模型没有返回有效的结果。请稍后再试或更换模型。")
+        if output and isinstance(output, dict) and "answer" in output:
+            st.success("🌟 回答：" + output["answer"])
