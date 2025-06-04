@@ -4,7 +4,7 @@ import requests
 
 # ✅ 安全读取 Hugging Face Token
 HF_API_TOKEN = st.secrets["HF_TOKEN"]
-HF_MODEL_ID = "HuggingFaceH4/zephyr-7b-alpha"
+HF_MODEL_ID = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
 st.set_page_config(page_title="黄帽思维练习器", layout="wide")
 st.title("🟡 黄帽思维练习器")
