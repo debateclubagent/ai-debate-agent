@@ -80,8 +80,25 @@ if st.button("生成回答") and question:
             )
 
             reply = response.choices[0].message.content
-            st.subheader("模型原始输出：")
-            st.code(reply)
+                        # 尝试提取 JSON 对象（从第一个 { 开始）
+            try:
+                json_start = reply.find('{')
+                json_str = reply[json_start:].split('```')[0].strip()
+                data = json.loads(json_str)
+
+                # 抽屉卡片式展示
+                with st.container():
+                    with st.expander(data['card_a']['title'], expanded=True):
+                        st.markdown(data['card_a']['content']['viewpoint'])
+                        st.markdown(data['card_a']['content']['evidence'])
+
+                    with st.expander(data['card_b']['title'], expanded=True):
+                        st.markdown(data['card_b']['content']['thinking_path'])
+                        st.markdown(data['card_b']['content']['training_tip'])
+
+            except Exception as e:
+                st.error("⚠️ 无法解析模型输出为 JSON。")
+                st.code(reply)
 
         except Exception as e:
             st.error("⚠️ 出错了，请查看异常信息：")
