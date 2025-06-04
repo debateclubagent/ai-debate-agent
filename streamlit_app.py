@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # 加载 secret token
-HF_TOKEN = st.secrets["hf_token"]
+HF_TOKEN = st.secrets["HF_TOKEN"]
 API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-distilled-squad"
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"}
 
