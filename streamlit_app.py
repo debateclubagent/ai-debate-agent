@@ -11,8 +11,19 @@ client = OpenAI(
     base_url="https://api.deepseek.com/v1"
 )
 
+# 统一的 JSON 解析保护函数
+def safe_json_parse(raw, label):
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        st.error(f"⚠️ {label} 的输出不是合法 JSON：{e}")
+        st.text_area("原始返回内容", raw, height=300)
+        return None
+
+# 黄帽 Prompt
+
 def build_yellow_prompt(question):
-    prompt = f"""
+    return f"""
 你是“黄帽思维者”，你擅长从问题中发现积极可能、被低估的好处，以及值得轻试的方向。
 你不否认困难，但你习惯优先问自己：“这里有没有什么地方，是可以带来转机的？”
 
@@ -60,6 +71,34 @@ def build_yellow_prompt(question):
     }}
   }}
 }}
+注意：请严格按照 JSON 格式输出，不要加解释、引言或 Markdown。
 """
-    return prompt
 
+# 主函数
+st.title("🎩 六顶思考帽：AI 观点生成器")
+question = st.text_area("请输入你的问题：", placeholder="例如：我该不该先免费提供产品？")
+
+if st.button("生成多角色观点"):
+    if not question:
+        st.warning("请输入一个问题！")
+        st.stop()
+
+    with st.spinner("🟡 黄帽思考中..."):
+        yellow_prompt = build_yellow_prompt(question)
+        yellow_response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "user", "content": yellow_prompt}
+            ]
+        )
+        yellow_json = safe_json_parse(yellow_response.choices[0].message.content, "黄帽")
+        if yellow_json is None:
+            st.stop()
+
+        with st.expander("🟡 黄帽视角：乐观可能"):
+            st.markdown(f"**{yellow_json['card_a']['title']}**")
+            st.write(yellow_json['card_a']['content']['viewpoint'])
+            st.write(yellow_json['card_a']['content']['evidence'])
+            st.markdown(f"**{yellow_json['card_b']['title']}**")
+            st.write(yellow_json['card_b']['content']['thinking_path'])
+            st.write(yellow_json['card_b']['content']['training_tip'])
