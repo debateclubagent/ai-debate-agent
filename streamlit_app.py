@@ -16,7 +16,6 @@ def safe_json_parse(raw, label):
     if not raw or not raw.strip():
         st.warning(f"⚠️ {label} 输出为空。")
         return None
-    # 清理 ```json 包裹的内容
     if raw.strip().startswith("```json"):
         raw = raw.strip()[7:-3].strip()
     try:
@@ -33,7 +32,7 @@ def build_yellow_prompt(question):
 
 用户的问题是：**{question}**
 
-请按以下结构输出，并确保是合法 JSON（不要多余前缀、不要使用 ``` 标记）：
+请按以下结构输出，并确保是合法 JSON：
 
 {{
   "card_a": {{
@@ -58,7 +57,6 @@ def build_black_prompt(question, yellow_viewpoint):
 用户的问题是：**{question}**
 
 请你围绕“黄帽观点中提到的积极方向”进行反思，从以下角度进行思考：
-
 - 其中可能隐藏的误判是什么？
 - 在现实中可能遭遇的困难、阻力或代价是什么？
 - 对黄帽的乐观是否需要设定前提？
@@ -71,7 +69,7 @@ def build_black_prompt(question, yellow_viewpoint):
   "card_a": {{
     "title": "潜在风险与现实限制",
     "content": {{
-      "viewpoint": "💣 我的反思：...",
+      "viewpoint": "💣 我的观点：...",
       "evidence": "📉 我的依据：..."
     }}
   }},
@@ -93,7 +91,6 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
 黑帽提出的观点是：“{black_viewpoint}”
 
 请你基于以上内容，给出总结性判断，包括：
-
 - 你如何看待两者的出发点？
 - 你对该问题的整合性看法
 - 如果是你，你会如何决策？理由是什么？
@@ -130,12 +127,13 @@ if st.button("生成多角色观点"):
             )
             yellow_json = safe_json_parse(yellow_response.choices[0].message.content, "黄帽")
             if yellow_json:
-                st.markdown(f"**{yellow_json['card_a']['title']}**")
-                st.write(yellow_json['card_a']['content']['viewpoint'])
-                st.write(yellow_json['card_a']['content']['evidence'])
-                st.markdown(f"**{yellow_json['card_b']['title']}**")
-                st.write(yellow_json['card_b']['content']['thinking_path'])
-                st.write(yellow_json['card_b']['content']['training_tip'])
+                with st.expander("🟡 黄帽观点", expanded=True):
+                    st.markdown(f"**{yellow_json['card_a']['title']}**")
+                    st.write(yellow_json['card_a']['content']['viewpoint'])
+                    st.write(yellow_json['card_a']['content']['evidence'])
+                    st.markdown(f"**{yellow_json['card_b']['title']}**")
+                    st.write(yellow_json['card_b']['content']['thinking_path'])
+                    st.write(yellow_json['card_b']['content']['training_tip'])
 
     with col2:
         with st.spinner("⚫ 黑帽反思中..."):
@@ -150,12 +148,13 @@ if st.button("生成多角色观点"):
             )
             black_json = safe_json_parse(black_response.choices[0].message.content, "黑帽")
             if black_json:
-                st.markdown(f"**{black_json['card_a']['title']}**")
-                st.write(black_json['card_a']['content']['viewpoint'])
-                st.write(black_json['card_a']['content']['evidence'])
-                st.markdown(f"**{black_json['card_b']['title']}**")
-                st.write(black_json['card_b']['content']['thinking_path'])
-                st.write(black_json['card_b']['content']['training_tip'])
+                with st.expander("⚫ 黑帽观点", expanded=True):
+                    st.markdown(f"**{black_json['card_a']['title']}**")
+                    st.write(black_json['card_a']['content']['viewpoint'])
+                    st.write(black_json['card_a']['content']['evidence'])
+                    st.markdown(f"**{black_json['card_b']['title']}**")
+                    st.write(black_json['card_b']['content']['thinking_path'])
+                    st.write(black_json['card_b']['content']['training_tip'])
 
     with col3:
         with st.spinner("🔵 蓝帽总结中..."):
@@ -171,5 +170,6 @@ if st.button("生成多角色观点"):
             )
             blue_json = safe_json_parse(blue_response.choices[0].message.content, "蓝帽")
             if blue_json:
-                st.markdown(f"**{blue_json['card']['title']}**")
-                st.write(blue_json['card']['content'])
+                with st.expander("🔵 蓝帽总结", expanded=True):
+                    st.markdown(f"**{blue_json['card']['title']}**")
+                    st.write(blue_json['card']['content'])
