@@ -12,7 +12,6 @@ client = OpenAI(
 )
 
 # JSON 解析函数
-
 def safe_json_parse(raw, label):
     if not raw or not raw.strip():
         st.warning(f"⚠️ {label} 输出为空。")
@@ -24,13 +23,90 @@ def safe_json_parse(raw, label):
         st.text_area("原始返回内容", raw, height=300)
         return None
 
-# 三顶帽子 prompt 构建函数（略，与你已有版本一致）
-# 省略了 build_yellow_prompt、build_black_prompt、build_blue_prompt
-# 请参考你已有代码，将这三段原封不动粘贴回来
+# 三顶帽子 prompt 构建函数
+def build_yellow_prompt(question):
+    return f"""你是“黄帽思维者”，你擅长从问题中发现积极可能、被低估的好处，以及值得轻试的方向。
+你不否认困难，但你习惯优先问自己：“这里有没有什么地方，是可以带来转机的？”
+
+用户的问题是：**{question}**
+
+请按以下结构输出，并确保是合法 JSON（不要多余前缀、不要使用 ``` 标记）：
+
+{{
+  "card_a": {{
+    "title": "问题的正向判断",
+    "content": {{
+      "viewpoint": "🎯 我的观点：...",
+      "evidence": "📚 我的依据：..."
+    }}
+  }},
+  "card_b": {{
+    "title": "思维方式与训练建议",
+    "content": {{
+      "thinking_path": "🧠 我为什么会这样思考：...",
+      "training_tip": "🧩 你也可以这样练：..."
+    }}
+  }}
+}}"""
+
+def build_black_prompt(question, yellow_viewpoint):
+    return f"""你是“黑帽思维者”，你擅长理性地识别问题中的潜在风险、不可控因素、可能被忽略的限制。
+
+用户的问题是：**{question}**
+
+请你围绕“黄帽观点中提到的积极方向”进行反思，从以下角度进行思考：
+
+- 其中可能隐藏的误判是什么？
+- 在现实中可能遭遇的困难、阻力或代价是什么？
+- 对黄帽的乐观是否需要设定前提？
+
+黄帽的观点是：“{yellow_viewpoint}”
+
+请按以下结构输出，并确保是合法 JSON：
+
+{{
+  "card_a": {{
+    "title": "潜在风险与现实限制",
+    "content": {{
+      "viewpoint": "💣 我的反思：...",
+      "evidence": "📉 我的依据：..."
+    }}
+  }},
+  "card_b": {{
+    "title": "思维方式与训练建议",
+    "content": {{
+      "thinking_path": "🧠 我为什么会这样思考：...",
+      "training_tip": "🧩 你也可以这样练：..."
+    }}
+  }}
+}}"""
+
+def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
+    return f"""你是“蓝帽思维者”，你的职责是整合前两者的观点，并帮助用户达成理性的判断。
+
+用户的问题是：**{question}**
+
+黄帽提出的观点是：“{yellow_viewpoint}”
+黑帽提出的观点是：“{black_viewpoint}”
+
+请你基于以上内容，给出总结性判断，包括：
+
+- 你如何看待两者的出发点？
+- 你对该问题的整合性看法
+- 如果是你，你会如何决策？理由是什么？
+
+请输出以下结构的 JSON（不要加 ```、不要解释）：
+
+{{
+  "card": {{
+    "title": "总结与判断",
+    "content": "⚖️ 我的判断：..."
+  }}
+}}"""
 
 # 主函数部分
 st.set_page_config(page_title="六顶思考帽 AI", layout="wide")
-st.title("🎩 六顶思考帽：AI 观点生成器")
+st.title("🎩 六顶思考帽： AI 观点生成器")
 question = st.text_area("请输入你的问题：", placeholder="例如：我该不该先免费提供产品？")
 
 if st.button("生成多角色观点"):
