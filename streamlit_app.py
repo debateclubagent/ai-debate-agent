@@ -16,6 +16,9 @@ def safe_json_parse(raw, label):
     if not raw or not raw.strip():
         st.warning(f"⚠️ {label} 输出为空。")
         return None
+    # 清理 ```json 包裹的内容
+    if raw.strip().startswith("```json"):
+        raw = raw.strip()[7:-3].strip()
     try:
         return json.loads(raw)
     except json.JSONDecodeError as e:
@@ -114,6 +117,8 @@ if st.button("生成多角色观点"):
         st.warning("请输入一个问题！")
         st.stop()
 
+    yellow_json = black_json = blue_json = None
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -158,6 +163,7 @@ if st.button("生成多角色观点"):
                 st.warning("⚠️ 无法生成蓝帽总结，前置观点缺失")
                 st.stop()
             black_viewpoint = black_json['card_a']['content']['viewpoint']
+            yellow_viewpoint = yellow_json['card_a']['content']['viewpoint']
             blue_prompt = build_blue_prompt(question, yellow_viewpoint, black_viewpoint)
             blue_response = client.chat.completions.create(
                 model="deepseek-chat",
