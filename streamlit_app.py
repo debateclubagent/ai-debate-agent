@@ -189,7 +189,9 @@ if st.button("生成多角色观点"):
         if blue_json is None:
             st.stop()
 
-    with st.expander("🟡 黄帽视角：乐观可能"):
+    tabs = st.tabs(["🟡 黄帽视角", "⚫ 黑帽视角", "🔵 蓝帽总结"])
+
+    with tabs[0]:
         st.markdown(f"**{yellow_json['card_a']['title']}**")
         st.write(yellow_json['card_a']['content']['viewpoint'])
         st.write(yellow_json['card_a']['content']['evidence'])
@@ -197,7 +199,7 @@ if st.button("生成多角色观点"):
         st.write(yellow_json['card_b']['content']['thinking_path'])
         st.write(yellow_json['card_b']['content']['training_tip'])
 
-    with st.expander("⚫ 黑帽视角：质疑反思"):
+    with tabs[1]:
         st.markdown(f"**{black_json['card_a']['title']}**")
         st.write(black_json['card_a']['content']['viewpoint'])
         st.write(black_json['card_a']['content']['evidence'])
@@ -205,6 +207,6 @@ if st.button("生成多角色观点"):
         st.write(black_json['card_b']['content']['thinking_path'])
         st.write(black_json['card_b']['content']['training_tip'])
 
-    with st.expander("🔵 蓝帽总结"):
+    with tabs[2]:
         st.markdown(f"**{blue_json['card']['title']}**")
         st.write(blue_json['card']['content'])
