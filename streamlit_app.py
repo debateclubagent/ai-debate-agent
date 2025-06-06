@@ -125,11 +125,18 @@ if "rounds" not in st.session_state:
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0
 
+# 按钮
+col1, col2 = st.columns(2)
+generate = col1.button("生成多角色观点")
+continue_battle = col2.button("接着 Battle")
+
+# 展示卡片内容
 def display_card(card):
     for k, v in card["content"].items():
         st.write(v)
 
-if st.button("生成多角色观点") and question:
+# 生成首轮
+def generate_round():
     with st.spinner("🟡 黄帽思考中..."):
         yellow_prompt = build_yellow_prompt(question, st.session_state.rounds)
         yellow_response = client.chat.completions.create(
@@ -164,6 +171,9 @@ if st.button("生成多角色观点") and question:
                 "blue": blue_data
             })
 
+if generate and question:
+    generate_round()
+
 # 展示内容：并列 tab 排版
 for i, r in enumerate(st.session_state.rounds):
     st.markdown(f"## 🎯 第{i+1}轮观点对决")
@@ -185,3 +195,7 @@ for i, r in enumerate(st.session_state.rounds):
         if r.get("blue"):
             with st.expander(r["blue"]["card"]["title"], expanded=False):
                 st.write(r["blue"]["card"]["content"])
+
+# 接着 Battle 新一轮
+if continue_battle and question:
+    generate_round()
