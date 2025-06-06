@@ -26,11 +26,12 @@ def safe_json_parse(raw, label):
         return None
 
 # 三顶帽子 prompt 构建函数
-def build_yellow_prompt(question):
+def build_yellow_prompt(question, previous=None):
+    ref = f"\n请结合上轮黑帽的观点进行回应：{previous}" if previous else ""
     return f"""你是“黄帽思维者”，你擅长从问题中发现积极可能、被低估的好处，以及值得轻试的方向。
 你不否认困难，但你习惯优先问自己：“这里有没有什么地方，是可以带来转机的？”
 
-用户的问题是：**{question}**
+用户的问题是：**{question}**{ref}
 
 请按以下结构输出，并确保是合法 JSON：
 
@@ -51,17 +52,18 @@ def build_yellow_prompt(question):
   }}
 }}"""
 
-def build_black_prompt(question, yellow_viewpoint):
+def build_black_prompt(question, yellow_viewpoint, previous=None):
+    ref = f"\n你还可以进一步回应上轮黄帽的新观点：{previous}" if previous else ""
     return f"""你是“黑帽思维者”，你擅长理性地识别问题中的潜在风险、不可控因素、可能被忽略的限制。
 
 用户的问题是：**{question}**
 
-请你针对“黄帽观点中提到的积极方向”进行辩证反思，从以下角度展开：
-- 黄帽提到的好处是否存在不切实际或过度乐观的成分？
-- 其中是否隐藏风险、误判，或需要额外的条件才可能成立？
-- 请用事实、数据或经验佐证你的判断。
+请你围绕“黄帽观点中提到的积极方向”进行反思，从以下角度进行思考：
+- 其中可能隐藏的误判是什么？
+- 在现实中可能遭遇的困难、阻力或代价是什么？
+- 对黄帽的乐观是否需要设定前提？
 
-黄帽的观点是：“{yellow_viewpoint}”
+黄帽的观点是：“{yellow_viewpoint}”{ref}
 
 请按以下结构输出，并确保是合法 JSON：
 
@@ -69,7 +71,7 @@ def build_black_prompt(question, yellow_viewpoint):
   "card_1": {{
     "title": "潜在风险与现实限制",
     "content": {{
-      "viewpoint": "💣 我的观点：...（请引用黄帽内容并做出辩证回应）",
+      "viewpoint": "💣 我的观点：...",
       "evidence": "📉 我的依据：..."
     }}
   }},
@@ -109,59 +111,73 @@ st.set_page_config(page_title="六顶思考帽 AI", layout="wide")
 st.title("🎩 六顶思考帽： AI 观点生成器")
 question = st.text_area("请输入你的问题：", placeholder="例如：我该不该先免费提供产品？")
 
-if st.button("生成多角色观点"):
-    if not question:
-        st.warning("请输入一个问题！")
-        st.stop()
+if 'rounds' not in st.session_state:
+    st.session_state.rounds = []
 
-    yellow_json = black_json = blue_json = None
+if st.button("生成初始观点"):
+    st.session_state.rounds = []
+    yellow_prompt = build_yellow_prompt(question)
+    yellow_response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[{"role": "user", "content": yellow_prompt}]
+    )
+    yellow_json = safe_json_parse(yellow_response.choices[0].message.content, "黄帽")
 
+    yellow_viewpoint = yellow_json['card_1']['content']['viewpoint']
+    black_prompt = build_black_prompt(question, yellow_viewpoint)
+    black_response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[{"role": "user", "content": black_prompt}]
+    )
+    black_json = safe_json_parse(black_response.choices[0].message.content, "黑帽")
+
+    st.session_state.rounds.append((yellow_json, black_json))
+
+if st.session_state.rounds:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        with st.spinner("🟡 黄帽思考中..."):
-            yellow_prompt = build_yellow_prompt(question)
+        for i, (yellow, _) in enumerate(st.session_state.rounds):
+            with st.expander(f"🟡 黄帽观点 {i+1}", expanded=i == len(st.session_state.rounds)-1):
+                st.write(yellow['card_1']['content']['viewpoint'])
+                st.write(yellow['card_1']['content']['evidence'])
+            with st.expander(f"🟡 思维方式与建议 {i+1}", expanded=False):
+                st.write(yellow['card_2']['content']['thinking_path'])
+                st.write(yellow['card_2']['content']['training_tip'])
+
+    with col2:
+        for i, (_, black) in enumerate(st.session_state.rounds):
+            with st.expander(f"⚫ 黑帽观点 {i+1}", expanded=i == len(st.session_state.rounds)-1):
+                st.write(black['card_1']['content']['viewpoint'])
+                st.write(black['card_1']['content']['evidence'])
+            with st.expander(f"⚫ 思维方式与建议 {i+1}", expanded=False):
+                st.write(black['card_2']['content']['thinking_path'])
+                st.write(black['card_2']['content']['training_tip'])
+
+    with col3:
+        if st.button("🔁 接着 Battle"):
+            latest_yellow = st.session_state.rounds[-1][0]['card_1']['content']['viewpoint']
+            latest_black = st.session_state.rounds[-1][1]['card_1']['content']['viewpoint']
+            yellow_prompt = build_yellow_prompt(question, previous=latest_black)
             yellow_response = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[{"role": "user", "content": yellow_prompt}]
             )
             yellow_json = safe_json_parse(yellow_response.choices[0].message.content, "黄帽")
-            if yellow_json:
-                with st.expander("🟡 黄帽观点：问题的正向判断", expanded=True):
-                    st.write(yellow_json['card_1']['content']['viewpoint'])
-                    st.write(yellow_json['card_1']['content']['evidence'])
-                with st.expander("🟡 黄帽思维方式与训练建议", expanded=False):
-                    st.write(yellow_json['card_2']['content']['thinking_path'])
-                    st.write(yellow_json['card_2']['content']['training_tip'])
 
-    with col2:
-        with st.spinner("⚫ 黑帽反思中..."):
-            if not yellow_json:
-                st.warning("⚠️ 无法生成黑帽观点，黄帽生成失败")
-                st.stop()
             yellow_viewpoint = yellow_json['card_1']['content']['viewpoint']
-            black_prompt = build_black_prompt(question, yellow_viewpoint)
+            black_prompt = build_black_prompt(question, yellow_viewpoint, previous=latest_yellow)
             black_response = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[{"role": "user", "content": black_prompt}]
             )
             black_json = safe_json_parse(black_response.choices[0].message.content, "黑帽")
-            if black_json:
-                with st.expander("⚫ 黑帽观点：潜在风险与现实限制", expanded=True):
-                    st.write(black_json['card_1']['content']['viewpoint'])
-                    st.write(black_json['card_1']['content']['evidence'])
-                with st.expander("⚫ 黑帽思维方式与训练建议", expanded=False):
-                    st.write(black_json['card_2']['content']['thinking_path'])
-                    st.write(black_json['card_2']['content']['training_tip'])
+            st.session_state.rounds.append((yellow_json, black_json))
 
-    with col3:
-        with st.spinner("🔵 蓝帽总结中..."):
-            if not yellow_json or not black_json:
-                st.warning("⚠️ 无法生成蓝帽总结，前置观点缺失")
-                st.stop()
-            black_viewpoint = black_json['card_1']['content']['viewpoint']
-            yellow_viewpoint = yellow_json['card_1']['content']['viewpoint']
-            blue_prompt = build_blue_prompt(question, yellow_viewpoint, black_viewpoint)
+        if st.button("📘 总结观点"):
+            final_yellow = st.session_state.rounds[-1][0]['card_1']['content']['viewpoint']
+            final_black = st.session_state.rounds[-1][1]['card_1']['content']['viewpoint']
+            blue_prompt = build_blue_prompt(question, final_yellow, final_black)
             blue_response = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[{"role": "user", "content": blue_prompt}]
