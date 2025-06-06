@@ -26,6 +26,7 @@ def safe_json_parse(raw, label):
         return None
 
 # 三顶帽子 prompt 构建函数
+
 def build_yellow_prompt(question, previous_rounds):
     ref = ""
     if previous_rounds:
