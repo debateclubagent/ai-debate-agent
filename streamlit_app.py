@@ -67,7 +67,9 @@ def build_black_prompt(question, yellow_viewpoint, previous_rounds):
 
 用户的问题是：**{question}**
 
-请你围绕“黄帽观点中提到的积极方向”进行反思，并展开辩论：请引用黄帽的某个具体说法进行回应，例如“黄帽提到...，但我认为...”
+请你围绕“黄帽观点中提到的积极方向”进行反思，并展开辩论：
+你必须引用黄帽的某个具体说法进行回应，例如：“黄帽提到...，但我认为...”
+请确保回应清晰、有针对性，体现辩论感。
 
 黄帽的观点是：“{yellow_viewpoint}”{ref}
 
@@ -162,20 +164,24 @@ if st.button("生成多角色观点") and question:
                 "blue": blue_data
             })
 
-# 展示内容
+# 展示内容：并列 tab 排版
 for i, r in enumerate(st.session_state.rounds):
-    with st.container():
-        st.markdown(f"### 🟡 第{i+1}轮 黄帽观点")
+    st.markdown(f"## 🎯 第{i+1}轮观点对决")
+    tabs = st.tabs(["🟡 黄帽视角", "⚫ 黑帽视角", "🔵 蓝帽总结"])
+
+    with tabs[0]:
         for c in ["card_1", "card_2"]:
             if c in r["yellow"]:
-                with st.expander(r["yellow"][c]["title"]):
+                with st.expander(r["yellow"][c]["title"], expanded=False):
                     display_card(r["yellow"][c])
-        st.markdown(f"### ⚫ 第{i+1}轮 黑帽观点")
+
+    with tabs[1]:
         for c in ["card_1", "card_2"]:
             if c in r["black"]:
-                with st.expander(r["black"][c]["title"]):
+                with st.expander(r["black"][c]["title"], expanded=False):
                     display_card(r["black"][c])
+
+    with tabs[2]:
         if r.get("blue"):
-            st.markdown(f"### 🔵 第{i+1}轮 蓝帽总结")
-            with st.expander(r["blue"]["card"]["title"]):
+            with st.expander(r["blue"]["card"]["title"], expanded=False):
                 st.write(r["blue"]["card"]["content"])
