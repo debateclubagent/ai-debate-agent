@@ -111,3 +111,69 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
     "content": "⚖️ 我的判断：..."
   }}
 }}"""
+
+# 👇👇👇 主程序入口逻辑
+
+st.set_page_config(page_title="六顶思考帽观点生成器", layout="wide")
+st.title("🎩 六顶思考帽：AI 观点生成器")
+
+question = st.text_area("请输入你的问题：", placeholder="例如：我要不要离职")
+if "rounds" not in st.session_state:
+    st.session_state.rounds = []
+if "current_index" not in st.session_state:
+    st.session_state.current_index = 0
+
+if st.button("生成多角色观点") and question:
+    with st.spinner("🟡 黄帽思考中..."):
+        yellow_prompt = build_yellow_prompt(question, st.session_state.rounds)
+        yellow_response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": yellow_prompt}]
+        )
+        yellow_data = safe_json_parse(yellow_response.choices[0].message.content, "黄帽")
+
+    if yellow_data:
+        yellow_view = yellow_data.get("card_1", {}).get("content", {}).get("viewpoint", "")
+        with st.spinner("⚫ 黑帽思考中..."):
+            black_prompt = build_black_prompt(question, yellow_view, st.session_state.rounds)
+            black_response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": black_prompt}]
+            )
+            black_data = safe_json_parse(black_response.choices[0].message.content, "黑帽")
+
+        if black_data:
+            black_view = black_data.get("card_1", {}).get("content", {}).get("viewpoint", "")
+            with st.spinner("🔵 蓝帽总结中..."):
+                blue_prompt = build_blue_prompt(question, yellow_view, black_view)
+                blue_response = client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[{"role": "user", "content": blue_prompt}]
+                )
+                blue_data = safe_json_parse(blue_response.choices[0].message.content, "蓝帽")
+
+            st.session_state.rounds.append({
+                "yellow": yellow_data,
+                "black": black_data,
+                "blue": blue_data
+            })
+
+# 展示内容
+for i, r in enumerate(st.session_state.rounds):
+    with st.container():
+        st.markdown(f"### 🟡 第{i+1}轮 黄帽观点")
+        for c in ["card_1", "card_2"]:
+            if c in r["yellow"]:
+                with st.expander(r["yellow"][c]["title"]):
+                    st.write(r["yellow"][c]["content"]["viewpoint"])
+                    st.write(r["yellow"][c]["content"]["evidence"])
+        st.markdown(f"### ⚫ 第{i+1}轮 黑帽观点")
+        for c in ["card_1", "card_2"]:
+            if c in r["black"]:
+                with st.expander(r["black"][c]["title"]):
+                    st.write(r["black"][c]["content"]["viewpoint"])
+                    st.write(r["black"][c]["content"]["evidence"])
+        if r.get("blue"):
+            st.markdown(f"### 🔵 第{i+1}轮 蓝帽总结")
+            with st.expander(r["blue"]["card"]["title"]):
+                st.write(r["blue"]["card"]["content"])
