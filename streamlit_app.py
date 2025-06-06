@@ -123,6 +123,10 @@ if "rounds" not in st.session_state:
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0
 
+def display_card(card):
+    for k, v in card["content"].items():
+        st.write(v)
+
 if st.button("生成多角色观点") and question:
     with st.spinner("🟡 黄帽思考中..."):
         yellow_prompt = build_yellow_prompt(question, st.session_state.rounds)
@@ -165,14 +169,12 @@ for i, r in enumerate(st.session_state.rounds):
         for c in ["card_1", "card_2"]:
             if c in r["yellow"]:
                 with st.expander(r["yellow"][c]["title"]):
-                    st.write(r["yellow"][c]["content"]["viewpoint"])
-                    st.write(r["yellow"][c]["content"]["evidence"])
+                    display_card(r["yellow"][c])
         st.markdown(f"### ⚫ 第{i+1}轮 黑帽观点")
         for c in ["card_1", "card_2"]:
             if c in r["black"]:
                 with st.expander(r["black"][c]["title"]):
-                    st.write(r["black"][c]["content"]["viewpoint"])
-                    st.write(r["black"][c]["content"]["evidence"])
+                    display_card(r["black"][c])
         if r.get("blue"):
             st.markdown(f"### 🔵 第{i+1}轮 蓝帽总结")
             with st.expander(r["blue"]["card"]["title"]):
