@@ -26,7 +26,7 @@ def safe_json_parse(raw, label):
         return None
 
 # 三顶帽子 prompt 构建函数
-def build_yellow_prompt(question, previous_rounds=None):
+def build_yellow_prompt(question, previous_rounds):
     ref = ""
     if previous_rounds:
         last_black = previous_rounds[-1].get("black", {}).get("card_1", {}).get("content", {}).get("viewpoint", "")
@@ -56,7 +56,7 @@ def build_yellow_prompt(question, previous_rounds=None):
   }}
 }}"""
 
-def build_black_prompt(question, yellow_viewpoint, previous_rounds=None):
+def build_black_prompt(question, yellow_viewpoint, previous_rounds):
     ref = ""
     if previous_rounds:
         last_yellow = previous_rounds[-1].get("yellow", {}).get("card_1", {}).get("content", {}).get("viewpoint", "")
