@@ -8,7 +8,7 @@ api_key = st.secrets["DEEPSEEK_API_KEY"]
 # 初始化 DeepSeek 客户端
 client = OpenAI(
     api_key=api_key,
-    base_url="https://api.deepseek.com/v1"
+    base_url="https://api.deepseek.com"
 )
 
 # JSON 解析函数
