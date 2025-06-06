@@ -126,16 +126,17 @@ if "current_index" not in st.session_state:
     st.session_state.current_index = 0
 
 # 按钮
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 generate = col1.button("生成多角色观点")
 continue_battle = col2.button("接着 Battle")
+only_summary = col3.button("蓝帽总结")
 
 # 展示卡片内容
 def display_card(card):
     for k, v in card["content"].items():
         st.write(v)
 
-# 生成首轮
+# 生成一轮
 def generate_round():
     with st.spinner("🟡 黄帽思考中..."):
         yellow_prompt = build_yellow_prompt(question, st.session_state.rounds)
@@ -170,28 +171,50 @@ def generate_round():
                 "black": black_data,
                 "blue": blue_data
             })
+    st.rerun()
+
+# 蓝帽总结
+if only_summary and question:
+    if not st.session_state.rounds:
+        st.warning("⚠️ 无法生成蓝帽总结，前置观点缺失")
+    else:
+        last_round = st.session_state.rounds[-1]
+        yellow_view = last_round["yellow"]["card_1"]["content"]["viewpoint"]
+        black_view = last_round["black"]["card_1"]["content"]["viewpoint"]
+        with st.spinner("🔵 蓝帽总结中..."):
+            blue_prompt = build_blue_prompt(question, yellow_view, black_view)
+            blue_response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": blue_prompt}]
+            )
+            blue_data = safe_json_parse(blue_response.choices[0].message.content, "蓝帽")
+            last_round["blue"] = blue_data
+        st.rerun()
 
 if generate and question:
     generate_round()
 
-# 展示内容：并列 tab 排版
+# 展示内容：三列展示黄黑蓝
 for i, r in enumerate(st.session_state.rounds):
     st.markdown(f"## 🎯 第{i+1}轮观点对决")
-    tabs = st.tabs(["🟡 黄帽视角", "⚫ 黑帽视角", "🔵 蓝帽总结"])
+    col_y, col_b, col_bl = st.columns(3)
 
-    with tabs[0]:
+    with col_y:
+        st.markdown("🟡 **黄帽视角**")
         for c in ["card_1", "card_2"]:
             if c in r["yellow"]:
                 with st.expander(r["yellow"][c]["title"], expanded=False):
                     display_card(r["yellow"][c])
 
-    with tabs[1]:
+    with col_b:
+        st.markdown("⚫ **黑帽视角**")
         for c in ["card_1", "card_2"]:
             if c in r["black"]:
                 with st.expander(r["black"][c]["title"], expanded=False):
                     display_card(r["black"][c])
 
-    with tabs[2]:
+    with col_bl:
+        st.markdown("🔵 **蓝帽总结**")
         if r.get("blue"):
             with st.expander(r["blue"]["card"]["title"], expanded=False):
                 st.write(r["blue"]["card"]["content"])
