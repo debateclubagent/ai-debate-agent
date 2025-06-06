@@ -67,7 +67,9 @@ def build_black_prompt(question, yellow_viewpoint, previous_rounds):
 
 用户的问题是：**{question}**
 
-请你围绕“黄帽观点中提到的积极方向”进行反思，并展开辩论：请引用黄帽的某个具体说法进行回应，例如“黄帽提到...，但我认为...”
+请你围绕“黄帽观点中提到的积极方向”进行反思，并展开辩论：
+你必须引用黄帽的某个具体说法进行回应，例如：“黄帽提到...，但我认为...”
+请确保回应清晰、有针对性，体现辩论感。
 
 黄帽的观点是：“{yellow_viewpoint}”{ref}
 
@@ -123,11 +125,19 @@ if "rounds" not in st.session_state:
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0
 
+# 按钮
+col1, col2, col3 = st.columns(3)
+generate = col1.button("生成多角色观点")
+continue_battle = col2.button("接着 Battle")
+only_summary = col3.button("蓝帽总结")
+
+# 展示卡片内容
 def display_card(card):
     for k, v in card["content"].items():
         st.write(v)
 
-if st.button("生成多角色观点") and question:
+# 生成一轮
+def generate_round():
     with st.spinner("🟡 黄帽思考中..."):
         yellow_prompt = build_yellow_prompt(question, st.session_state.rounds)
         yellow_response = client.chat.completions.create(
@@ -161,21 +171,56 @@ if st.button("生成多角色观点") and question:
                 "black": black_data,
                 "blue": blue_data
             })
+    st.rerun()
 
-# 展示内容
+# 蓝帽总结
+if only_summary and question:
+    if not st.session_state.rounds:
+        st.warning("⚠️ 无法生成蓝帽总结，前置观点缺失")
+    else:
+        last_round = st.session_state.rounds[-1]
+        yellow_view = last_round["yellow"]["card_1"]["content"]["viewpoint"]
+        black_view = last_round["black"]["card_1"]["content"]["viewpoint"]
+        with st.spinner("🔵 蓝帽总结中..."):
+            blue_prompt = build_blue_prompt(question, yellow_view, black_view)
+            blue_response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": blue_prompt}]
+            )
+            blue_data = safe_json_parse(blue_response.choices[0].message.content, "蓝帽")
+            last_round["blue"] = blue_data
+        st.rerun()
+
+if generate and question:
+    generate_round()
+
+# 展示内容：三列展示黄黑蓝
 for i, r in enumerate(st.session_state.rounds):
-    with st.container():
-        st.markdown(f"### 🟡 第{i+1}轮 黄帽观点")
-        for c in ["card_1", "card_2"]:
-            if c in r["yellow"]:
-                with st.expander(r["yellow"][c]["title"]):
-                    display_card(r["yellow"][c])
-        st.markdown(f"### ⚫ 第{i+1}轮 黑帽观点")
-        for c in ["card_1", "card_2"]:
-            if c in r["black"]:
-                with st.expander(r["black"][c]["title"]):
-                    display_card(r["black"][c])
+    st.markdown(f"## 🎯 第{i+1}轮观点对决")
+    col_y, col_b, col_bl = st.columns(3)
+
+    with col_y:
+        st.markdown("🟡 **黄帽视角**")
+        if "card_1" in r["yellow"]:
+            with st.expander(r["yellow"]["card_1"]["title"], expanded=False):
+                display_card(r["yellow"]["card_1"])
+                if st.button(f"🧠 思维训练 - 黄帽 第{i+1}轮", key=f"yellow_train_{i}"):
+                    display_card(r["yellow"]["card_2"])
+
+    with col_b:
+        st.markdown("⚫ **黑帽视角**")
+        if "card_1" in r["black"]:
+            with st.expander(r["black"]["card_1"]["title"], expanded=False):
+                display_card(r["black"]["card_1"])
+                if st.button(f"🧠 思维训练 - 黑帽 第{i+1}轮", key=f"black_train_{i}"):
+                    display_card(r["black"]["card_2"])
+
+    with col_bl:
+        st.markdown("🔵 **蓝帽总结**")
         if r.get("blue"):
-            st.markdown(f"### 🔵 第{i+1}轮 蓝帽总结")
-            with st.expander(r["blue"]["card"]["title"]):
+            with st.expander(r["blue"]["card"]["title"], expanded=False):
                 st.write(r["blue"]["card"]["content"])
+
+# 接着 Battle 新一轮
+if continue_battle and question:
+    generate_round()
