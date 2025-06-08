@@ -141,14 +141,24 @@ def display_hat_column(role, data, round_index):
     if "card_1" in data:
         with st.expander(data["card_1"]["title"], expanded=False):
             display_card(data["card_1"])
+
+            # 控制训练显示状态的 Session Key
             toggle_key = f"{role}_show_training_{round_index}"
             if toggle_key not in st.session_state:
                 st.session_state[toggle_key] = False
-            if st.button(f"{'🧠' if role == 'yellow' else '💣'} 思维训练 - 第{round_index + 1}轮", key=f"{role}_btn_{round_index}"):
+
+            # 按钮控制展开/收起
+            if st.button(
+                f"{'🧠' if role == 'yellow' else '💣'} {'隐藏训练建议' if st.session_state[toggle_key] else '展开训练建议'} - 第{round_index + 1}轮", 
+                key=f"{role}_btn_{round_index}"
+            ):
                 st.session_state[toggle_key] = not st.session_state[toggle_key]
-            if st.session_state[toggle_key]:
-                with st.expander("🧠 思维训练", expanded=True):
-                    display_card(data["card_2"])
+
+            # 直接写入训练建议内容
+            if st.session_state[toggle_key] and "card_2" in data:
+                st.markdown("#### 🧠 思维方式与训练建议")
+                display_card(data["card_2"])
+
 
 # 生成一轮
 def generate_round():
