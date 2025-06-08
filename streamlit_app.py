@@ -115,3 +115,5 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
 }}"""
 
 # ✅ 主程序逻辑整合将在此基础上构建 —— 包括卡片显示、按钮响应、引用机制等。
+
+# 🔄 更多主逻辑将继续补充，包括调用模型与渲染组件等
