@@ -114,4 +114,4 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
   }}
 }}"""
 
-# 👇👇👇 主程序逻辑入口更新后位置：请转至 Canvas 继续操作。
+# ✅ 主程序逻辑整合将在此基础上构建 —— 包括卡片显示、按钮响应、引用机制等。
