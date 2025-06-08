@@ -137,37 +137,37 @@ only_summary = col3.button("蓝帽总结")
 def display_card(card, vote_key):
     for k, v in card["content"].items():
         st.write(v)
-    upvote, downvote = st.columns([1,1])
-    with upvote:
-        if st.button("👍 赞同", key=vote_key+"_up"):
+
+    # 水平按钮区域
+    button_col1, button_col2, button_col3 = st.columns([1, 1, 3])
+    with button_col1:
+        if st.button("👍 赞同", key=vote_key + "_up"):
             st.session_state.votes[vote_key] = True
-    with downvote:
-        if st.button("👎 反对", key=vote_key+"_down"):
+    with button_col2:
+        if st.button("👎 反对", key=vote_key + "_down"):
             st.session_state.votes[vote_key] = False
+    with button_col3:
+        toggle_key = f"toggle_state_{vote_key}"
+        show_training = st.toggle("🧠 展开/收起训练建议", key=toggle_key)
+        if show_training:
+            st.markdown("#### 🧠 思维方式与训练建议")
+            st.write(card.get("training_content", "暂无训练建议"))
 
 def display_hat_column(role, data, round_index):
     st.markdown(f"{'🟡' if role == 'yellow' else '⚫'} **{role.capitalize()}帽视角**")
-    if "card_1" in data:
-        with st.expander(data["card_1"]["title"], expanded=False):
-            vote_key = f"{role}_{round_index}_card1"
-            display_card(data["card_1"], vote_key)
+    if "card_1" in data and "card_2" in data:
+        vote_key = f"{role}_{round_index}_card1"
 
-            # 一行三列按钮：展开建议 + 赞同 + 反对
-            toggle_key = f"toggle_state_{role}_{round_index}"
-            col_train, col_up, col_down = st.columns([2, 1, 1])
-            with col_train:
-                show_training = st.toggle("🧠 展开/收起训练建议", key=toggle_key)
-            with col_up:
-                if st.button("👍", key=vote_key + "_up"):
-                    st.session_state.votes[vote_key] = True
-            with col_down:
-                if st.button("👎", key=vote_key + "_down"):
-                    st.session_state.votes[vote_key] = False
+        # 把 card_2 的内容作为字段注入 card_1
+        card = data["card_1"]
+        card["training_content"] = (
+            f"**🧠 {data['card_2']['title']}**\n\n"
+            f"{data['card_2']['content']['thinking_path']}\n\n"
+            f"{data['card_2']['content']['training_tip']}"
+        )
 
-            if show_training and "card_2" in data:
-                st.markdown("#### 🧠 思维方式与训练建议")
-                display_card(data["card_2"], vote_key + "_card2")
-
+        with st.expander(card["title"], expanded=False):
+            display_card(card, vote_key)
 
 # 生成一轮
 def generate_round():
