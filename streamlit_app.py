@@ -175,3 +175,51 @@ if st.session_state.rounds:
     with col3:
         st.subheader("🔵 蓝帽总结")
         st.markdown(latest["blue"]["card"]["content"])
+
+    st.markdown("---")
+
+    col_battle, col_summary = st.columns(2)
+    with col_battle:
+        if st.button("🔁 接着 Battle"):
+            yellow_last = latest["yellow"]["card_1"]["content"]["viewpoint"]
+            black_last = latest["black"]["card_1"]["content"]["viewpoint"]
+
+            with st.spinner("黄帽思考中..."):
+                yellow_raw = client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[{"role": "user", "content": build_yellow_prompt(question, st.session_state.rounds)}],
+                    temperature=0.7
+                ).choices[0].message.content
+                yellow = safe_json_parse(yellow_raw, "黄帽")
+
+            with st.spinner("黑帽反思中..."):
+                black_raw = client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[{"role": "user", "content": build_black_prompt(question, yellow_last, st.session_state.rounds)}],
+                    temperature=0.7
+                ).choices[0].message.content
+                black = safe_json_parse(black_raw, "黑帽")
+
+            with st.spinner("蓝帽总结中..."):
+                blue_raw = client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[{"role": "user", "content": build_blue_prompt(question, yellow_last, black["card_1"]["content"]["viewpoint"])}],
+                    temperature=0.7
+                ).choices[0].message.content
+                blue = safe_json_parse(blue_raw, "蓝帽")
+
+            st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
+
+    with col_summary:
+        if st.button("🧾 总结观点"):
+            yellow_last = latest["yellow"]["card_1"]["content"]["viewpoint"]
+            black_last = latest["black"]["card_1"]["content"]["viewpoint"]
+            with st.spinner("蓝帽总结中..."):
+                blue_raw = client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[{"role": "user", "content": build_blue_prompt(question, yellow_last, black_last)}],
+                    temperature=0.7
+                ).choices[0].message.content
+                blue = safe_json_parse(blue_raw, "蓝帽")
+                st.markdown("### 🧠 蓝帽新总结")
+                st.markdown(blue["card"]["content"])
