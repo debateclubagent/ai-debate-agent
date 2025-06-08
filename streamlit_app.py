@@ -205,7 +205,8 @@ for i, r in enumerate(st.session_state.rounds):
             with st.expander(r["yellow"]["card_1"]["title"], expanded=False):
                 display_card(r["yellow"]["card_1"])
                 if st.button(f"🧠 思维训练 - 黄帽 第{i+1}轮", key=f"yellow_train_{i}"):
-                    display_card(r["yellow"]["card_2"])
+                    with st.expander("🧠 黄帽思维训练", expanded=True):
+                        display_card(r["yellow"]["card_2"])
 
     with col_b:
         st.markdown("⚫ **黑帽视角**")
@@ -213,7 +214,8 @@ for i, r in enumerate(st.session_state.rounds):
             with st.expander(r["black"]["card_1"]["title"], expanded=False):
                 display_card(r["black"]["card_1"])
                 if st.button(f"🧠 思维训练 - 黑帽 第{i+1}轮", key=f"black_train_{i}"):
-                    display_card(r["black"]["card_2"])
+                    with st.expander("🧠 黑帽思维训练", expanded=True):
+                        display_card(r["black"]["card_2"])
 
     with col_bl:
         st.markdown("🔵 **蓝帽总结**")
