@@ -142,13 +142,11 @@ def display_hat_column(role, data, round_index):
         with st.expander(data["card_1"]["title"], expanded=False):
             display_card(data["card_1"])
 
-            # 替代方案：折叠按钮加图标，非 button 控件，避免 session_state 冲突
+            # 折叠建议内容 toggle
             toggle_key = f"toggle_state_{role}_{round_index}"
-            if toggle_key not in st.session_state:
-                st.session_state[toggle_key] = False
-
-            with st.expander(f"🧠 思维训练建议 - 第{round_index+1}轮", expanded=st.session_state[toggle_key]):
-                st.session_state[toggle_key] = not st.session_state[toggle_key]  # 每次点击会重置展开状态
+            show_training = st.toggle("🧠 展开/收起训练建议", key=toggle_key)
+            if show_training:
+                st.markdown("#### 🧠 思维方式与训练建议")
                 display_card(data["card_2"])
 
 # 生成一轮
