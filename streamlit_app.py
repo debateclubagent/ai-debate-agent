@@ -136,6 +136,20 @@ def display_card(card):
     for k, v in card["content"].items():
         st.write(v)
 
+def display_hat_column(role, data, round_index):
+    st.markdown(f"{'🟡' if role == 'yellow' else '⚫'} **{role.capitalize()}帽视角**")
+    if "card_1" in data:
+        with st.expander(data["card_1"]["title"], expanded=False):
+            display_card(data["card_1"])
+            toggle_key = f"{role}_show_training_{round_index}"
+            if toggle_key not in st.session_state:
+                st.session_state[toggle_key] = False
+            if st.button(f"{'🧠' if role == 'yellow' else '💣'} 思维训练 - 第{round_index + 1}轮", key=f"{role}_btn_{round_index}"):
+                st.session_state[toggle_key] = not st.session_state[toggle_key]
+            if st.session_state[toggle_key]:
+                with st.expander("🧠 思维训练", expanded=True):
+                    display_card(data["card_2"])
+
 # 生成一轮
 def generate_round():
     with st.spinner("🟡 黄帽思考中..."):
@@ -200,22 +214,10 @@ for i, r in enumerate(st.session_state.rounds):
     col_y, col_b, col_bl = st.columns(3)
 
     with col_y:
-        st.markdown("🟡 **黄帽视角**")
-        if "card_1" in r["yellow"]:
-            with st.expander(r["yellow"]["card_1"]["title"], expanded=False):
-                display_card(r["yellow"]["card_1"])
-                if st.button(f"🧠 思维训练 - 黄帽 第{i+1}轮", key=f"yellow_train_{i}"):
-                    with st.expander("🧠 黄帽思维训练", expanded=True):
-                        display_card(r["yellow"]["card_2"])
+        display_hat_column("yellow", r["yellow"], i)
 
     with col_b:
-        st.markdown("⚫ **黑帽视角**")
-        if "card_1" in r["black"]:
-            with st.expander(r["black"]["card_1"]["title"], expanded=False):
-                display_card(r["black"]["card_1"])
-                if st.button(f"🧠 思维训练 - 黑帽 第{i+1}轮", key=f"black_train_{i}"):
-                    with st.expander("🧠 黑帽思维训练", expanded=True):
-                        display_card(r["black"]["card_2"])
+        display_hat_column("black", r["black"], i)
 
     with col_bl:
         st.markdown("🔵 **蓝帽总结**")
