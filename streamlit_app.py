@@ -141,7 +141,13 @@ def display_hat_column(role, data, round_index):
     if "card_1" in data:
         with st.expander(data["card_1"]["title"], expanded=False):
             display_card(data["card_1"])
-            with st.expander("🧠 思维训练建议", expanded=False):
+            toggle_key = f"toggle_{role}_{round_index}"
+            if toggle_key not in st.session_state:
+                st.session_state[toggle_key] = False
+            if st.button(f"🧠 思维训练建议 - 第{round_index+1}轮", key=toggle_key):
+                st.session_state[toggle_key] = not st.session_state[toggle_key]
+            if st.session_state[toggle_key]:
+                st.markdown("### 🧠 思维方式与训练建议")
                 display_card(data["card_2"])
 
 # 生成一轮
