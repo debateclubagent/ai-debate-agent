@@ -123,6 +123,10 @@ question = st.text_input("请输入你的问题：", placeholder="例如：我�
 
 if "rounds" not in st.session_state:
     st.session_state.rounds = []
+if "show_training_yellow" not in st.session_state:
+    st.session_state.show_training_yellow = False
+if "show_training_black" not in st.session_state:
+    st.session_state.show_training_black = False
 
 if st.button("开始第一轮") and question:
     with st.spinner("黄帽思考中..."):
@@ -160,7 +164,9 @@ if st.session_state.rounds:
         st.subheader("🟡 黄帽")
         st.markdown(latest["yellow"]["card_1"]["content"]["viewpoint"])
         st.markdown(latest["yellow"]["card_1"]["content"]["evidence"])
-        with st.expander("🧠 思维训练"):
+        if st.button("🧠 思维训练", key="btn_yellow_train"):
+            st.session_state.show_training_yellow = not st.session_state.show_training_yellow
+        if st.session_state.show_training_yellow:
             st.markdown(latest["yellow"]["card_2"]["content"]["thinking_path"])
             st.markdown(latest["yellow"]["card_2"]["content"]["training_tip"])
 
@@ -168,7 +174,9 @@ if st.session_state.rounds:
         st.subheader("⚫ 黑帽")
         st.markdown(latest["black"]["card_1"]["content"]["viewpoint"])
         st.markdown(latest["black"]["card_1"]["content"]["evidence"])
-        with st.expander("🧠 思维训练"):
+        if st.button("🧠 思维训练", key="btn_black_train"):
+            st.session_state.show_training_black = not st.session_state.show_training_black
+        if st.session_state.show_training_black:
             st.markdown(latest["black"]["card_2"]["content"]["thinking_path"])
             st.markdown(latest["black"]["card_2"]["content"]["training_tip"])
 
