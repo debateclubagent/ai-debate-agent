@@ -114,6 +114,64 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
   }}
 }}"""
 
-# ✅ 主程序逻辑整合将在此基础上构建 —— 包括卡片显示、按钮响应、引用机制等。
+# ✅ 主程序逻辑整合
 
-# 🔄 更多主逻辑将继续补充，包括调用模型与渲染组件等
+st.set_page_config(page_title="六顶思考帽 · AI 辩论器", layout="wide")
+st.title("🧠 六顶思考帽 · AI 辩论引导")
+
+question = st.text_input("请输入你的问题：", placeholder="例如：我要不要离职")
+
+if "rounds" not in st.session_state:
+    st.session_state.rounds = []
+
+if st.button("开始第一轮") and question:
+    with st.spinner("黄帽思考中..."):
+        yellow_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_yellow_prompt(question, st.session_state.rounds)}],
+            temperature=0.7
+        ).choices[0].message.content
+        yellow = safe_json_parse(yellow_raw, "黄帽")
+
+    with st.spinner("黑帽反思中..."):
+        black_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_black_prompt(question, yellow['card_1']['content']['viewpoint'], st.session_state.rounds)}],
+            temperature=0.7
+        ).choices[0].message.content
+        black = safe_json_parse(black_raw, "黑帽")
+
+    with st.spinner("蓝帽总结中..."):
+        blue_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_blue_prompt(question, yellow['card_1']['content']['viewpoint'], black['card_1']['content']['viewpoint'])}],
+            temperature=0.7
+        ).choices[0].message.content
+        blue = safe_json_parse(blue_raw, "蓝帽")
+
+    st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
+
+# 展示最新一轮结果（如有）
+if st.session_state.rounds:
+    latest = st.session_state.rounds[-1]
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.subheader("🟡 黄帽")
+        st.markdown(latest["yellow"]["card_1"]["content"]["viewpoint"])
+        st.markdown(latest["yellow"]["card_1"]["content"]["evidence"])
+        with st.expander("🧠 思维训练"):
+            st.markdown(latest["yellow"]["card_2"]["content"]["thinking_path"])
+            st.markdown(latest["yellow"]["card_2"]["content"]["training_tip"])
+
+    with col2:
+        st.subheader("⚫ 黑帽")
+        st.markdown(latest["black"]["card_1"]["content"]["viewpoint"])
+        st.markdown(latest["black"]["card_1"]["content"]["evidence"])
+        with st.expander("🧠 思维训练"):
+            st.markdown(latest["black"]["card_2"]["content"]["thinking_path"])
+            st.markdown(latest["black"]["card_2"]["content"]["training_tip"])
+
+    with col3:
+        st.subheader("🔵 蓝帽总结")
+        st.markdown(latest["blue"]["card"]["content"])
