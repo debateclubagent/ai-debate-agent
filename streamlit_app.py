@@ -152,11 +152,22 @@ def display_hat_column(role, data, round_index):
             vote_key = f"{role}_{round_index}_card1"
             display_card(data["card_1"], vote_key)
 
+            # 一行三列按钮：展开建议 + 赞同 + 反对
             toggle_key = f"toggle_state_{role}_{round_index}"
-            show_training = st.toggle("🧠 展开/收起训练建议", key=toggle_key)
-            if show_training:
+            col_train, col_up, col_down = st.columns([2, 1, 1])
+            with col_train:
+                show_training = st.toggle("🧠 展开/收起训练建议", key=toggle_key)
+            with col_up:
+                if st.button("👍", key=vote_key + "_up"):
+                    st.session_state.votes[vote_key] = True
+            with col_down:
+                if st.button("👎", key=vote_key + "_down"):
+                    st.session_state.votes[vote_key] = False
+
+            if show_training and "card_2" in data:
                 st.markdown("#### 🧠 思维方式与训练建议")
-                display_card(data["card_2"], vote_key+"_card2")
+                display_card(data["card_2"], vote_key + "_card2")
+
 
 # 生成一轮
 def generate_round():
