@@ -124,6 +124,8 @@ if "rounds" not in st.session_state:
     st.session_state.rounds = []
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0
+if "votes" not in st.session_state:
+    st.session_state.votes = {}
 
 # 按钮
 col1, col2, col3 = st.columns(3)
@@ -132,22 +134,29 @@ continue_battle = col2.button("接着 Battle")
 only_summary = col3.button("蓝帽总结")
 
 # 展示卡片内容
-def display_card(card):
+def display_card(card, vote_key):
     for k, v in card["content"].items():
         st.write(v)
+    upvote, downvote = st.columns([1,1])
+    with upvote:
+        if st.button("👍 赞同", key=vote_key+"_up"):
+            st.session_state.votes[vote_key] = True
+    with downvote:
+        if st.button("👎 反对", key=vote_key+"_down"):
+            st.session_state.votes[vote_key] = False
 
 def display_hat_column(role, data, round_index):
     st.markdown(f"{'🟡' if role == 'yellow' else '⚫'} **{role.capitalize()}帽视角**")
     if "card_1" in data:
         with st.expander(data["card_1"]["title"], expanded=False):
-            display_card(data["card_1"])
+            vote_key = f"{role}_{round_index}_card1"
+            display_card(data["card_1"], vote_key)
 
-            # 折叠建议内容 toggle
             toggle_key = f"toggle_state_{role}_{round_index}"
             show_training = st.toggle("🧠 展开/收起训练建议", key=toggle_key)
             if show_training:
                 st.markdown("#### 🧠 思维方式与训练建议")
-                display_card(data["card_2"])
+                display_card(data["card_2"], vote_key+"_card2")
 
 # 生成一轮
 def generate_round():
