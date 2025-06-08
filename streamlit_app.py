@@ -141,14 +141,8 @@ def display_hat_column(role, data, round_index):
     if "card_1" in data:
         with st.expander(data["card_1"]["title"], expanded=False):
             display_card(data["card_1"])
-            toggle_key = f"{role}_show_training_{round_index}"
-            if toggle_key not in st.session_state:
-                st.session_state[toggle_key] = False
-            if st.button(f"{'🧠' if role == 'yellow' else '💣'} 思维训练 - 第{round_index + 1}轮", key=f"{role}_btn_{round_index}"):
-                st.session_state[toggle_key] = not st.session_state[toggle_key]
-            if st.session_state[toggle_key]:
-                with st.expander("🧠 思维训练", expanded=True):
-                    display_card(data["card_2"])
+            with st.expander("🧠 思维训练建议", expanded=False):
+                display_card(data["card_2"])
 
 # 生成一轮
 def generate_round():
