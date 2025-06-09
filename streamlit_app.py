@@ -126,39 +126,50 @@ if "show_training" not in st.session_state:
     st.session_state.show_training = {}
 
 # ✅ 卡片组件
-
 def render_card(role, data, round_index):
-    st.markdown(f"### {'🟡 黄帽' if role == 'yellow' else '⚫ 黑帽' if role == 'black' else '🔵 蓝帽总结'}")
-    card1 = data.get("card_1") or data.get("card")
-    st.markdown(f"#### {card1['title']}")
-    st.markdown(card1["content"]["viewpoint"] if isinstance(card1["content"], dict) else card1["content"])
-    if isinstance(card1["content"], dict) and "evidence" in card1["content"]:
-        st.markdown(card1["content"]["evidence"])
+    with st.container():
+        st.markdown("---")
+        st.markdown(f"### {'🟡 黄帽' if role == 'yellow' else '⚫ 黑帽' if role == 'black' else '🔵 蓝帽总结'}")
+        card1 = data.get("card_1") or data.get("card")
+        st.markdown(f"**{card1['title']}**")
+        st.markdown(card1["content"]["viewpoint"] if isinstance(card1["content"], dict) else card1["content"])
+        if isinstance(card1["content"], dict) and "evidence" in card1["content"]:
+            st.markdown(card1["content"]["evidence"])
 
-    if role in ["yellow", "black"]:
-        key = f"show_{role}_train_{round_index}"
-        if key not in st.session_state:
-            st.session_state[key] = False
+        if role in ["yellow", "black"]:
+            key = f"show_{role}_train_{round_index}"
+            if key not in st.session_state:
+                st.session_state[key] = False
 
-        with st.container():
-            cols = st.columns([1, 1, 6])
-            with cols[0]:
-                st.button("👍", key=f"like_{role}_{round_index}")
-            with cols[1]:
-                st.button("👎", key=f"dislike_{role}_{round_index}")
-            with cols[2]:
-                st.toggle("🧠 展开/收起训练建议", key=key)
+            with st.container():
+                cols = st.columns([1, 1, 4])
+                with cols[0]:
+                    st.button("👍", key=f"like_{role}_{round_index}")
+                with cols[1]:
+                    st.button("👎", key=f"dislike_{role}_{round_index}")
+                with cols[2]:
+                    st.toggle("🧠 思维训练", key=key)
 
-        if st.session_state[key]:
-            st.markdown(data["card_2"]["content"]["thinking_path"])
-            st.markdown(data["card_2"]["content"]["training_tip"])
+            if st.session_state[key]:
+                st.markdown(data["card_2"]["content"]["thinking_path"])
+                st.markdown(data["card_2"]["content"]["training_tip"])
 
-# ✅ 首轮触发
-if st.button("开始第一轮") and question:
+# ✅ 多轮展示
+for idx, round_data in enumerate(st.session_state.rounds):
+    st.markdown(f"## 🎯 第{idx+1}轮观点对决")
+    col1, col2, col3 = st.columns(3)
+    with col1: render_card("yellow", round_data["yellow"], idx)
+    with col2: render_card("black", round_data["black"], idx)
+    with col3: render_card("blue", round_data["blue"], idx)
+
+# ✅ 生成新一轮观点按钮
+if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 接着 Battle") and question:
+    previous_rounds = st.session_state.rounds
+
     with st.spinner("黄帽思考中..."):
         yellow_raw = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": build_yellow_prompt(question, st.session_state.rounds)}],
+            messages=[{"role": "user", "content": build_yellow_prompt(question, previous_rounds)}],
             temperature=0.7
         ).choices[0].message.content
         yellow = safe_json_parse(yellow_raw, "黄帽")
@@ -166,7 +177,7 @@ if st.button("开始第一轮") and question:
     with st.spinner("黑帽反思中..."):
         black_raw = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": build_black_prompt(question, yellow['card_1']['content']['viewpoint'], st.session_state.rounds)}],
+            messages=[{"role": "user", "content": build_black_prompt(question, yellow['card_1']['content']['viewpoint'], previous_rounds)}],
             temperature=0.7
         ).choices[0].message.content
         black = safe_json_parse(black_raw, "黑帽")
@@ -180,60 +191,19 @@ if st.button("开始第一轮") and question:
         blue = safe_json_parse(blue_raw, "蓝帽")
 
     st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
+    st.rerun()
 
-# ✅ 多轮展示
-for idx, round_data in enumerate(st.session_state.rounds):
-    st.markdown(f"## 🎯 第{idx+1}轮观点对决")
-    col1, col2, col3 = st.columns(3)
-    with col1: render_card("yellow", round_data["yellow"], idx)
-    with col2: render_card("black", round_data["black"], idx)
-    with col3: render_card("blue", round_data["blue"], idx)
-
-# ✅ 继续对战 / 总结按钮
-col_battle, col_summary = st.columns(2)
-with col_battle:
-    if st.button("🔁 接着 Battle"):
-        last = st.session_state.rounds[-1]
-        yellow_last = last["yellow"]["card_1"]["content"]["viewpoint"]
-        black_last = last["black"]["card_1"]["content"]["viewpoint"]
-
-        with st.spinner("黄帽思考中..."):
-            yellow_raw = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[{"role": "user", "content": build_yellow_prompt(question, st.session_state.rounds)}],
-                temperature=0.7
-            ).choices[0].message.content
-            yellow = safe_json_parse(yellow_raw, "黄帽")
-
-        with st.spinner("黑帽反思中..."):
-            black_raw = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[{"role": "user", "content": build_black_prompt(question, yellow_last, st.session_state.rounds)}],
-                temperature=0.7
-            ).choices[0].message.content
-            black = safe_json_parse(black_raw, "黑帽")
-
-        with st.spinner("蓝帽总结中..."):
-            blue_raw = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[{"role": "user", "content": build_blue_prompt(question, yellow_last, black["card_1"]["content"]["viewpoint"])}],
-                temperature=0.7
-            ).choices[0].message.content
-            blue = safe_json_parse(blue_raw, "蓝帽")
-
-        st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
-
-with col_summary:
-    if st.button("🧾 总结观点"):
-        last = st.session_state.rounds[-1]
-        yellow_last = last["yellow"]["card_1"]["content"]["viewpoint"]
-        black_last = last["black"]["card_1"]["content"]["viewpoint"]
-        with st.spinner("蓝帽总结中..."):
-            blue_raw = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[{"role": "user", "content": build_blue_prompt(question, yellow_last, black_last)}],
-                temperature=0.7
-            ).choices[0].message.content
-            blue = safe_json_parse(blue_raw, "蓝帽")
-            st.markdown("### 🧠 蓝帽新总结")
-            st.markdown(blue["card"]["content"])
+# ✅ 蓝帽总结
+if st.button("🧾 总结观点"):
+    last = st.session_state.rounds[-1]
+    yellow_last = last["yellow"]["card_1"]["content"]["viewpoint"]
+    black_last = last["black"]["card_1"]["content"]["viewpoint"]
+    with st.spinner("蓝帽总结中..."):
+        blue_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_blue_prompt(question, yellow_last, black_last)}],
+            temperature=0.7
+        ).choices[0].message.content
+        blue = safe_json_parse(blue_raw, "蓝帽")
+        st.markdown("### 🧠 蓝帽新总结")
+        st.markdown(blue["card"]["content"])
