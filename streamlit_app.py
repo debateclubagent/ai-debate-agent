@@ -38,6 +38,45 @@ if "rounds" not in st.session_state:
 if "votes" not in st.session_state:
     st.session_state.votes = {}
 
+# 生成新一轮观点按钮
+if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 接着 Battle") and question:
+    previous_rounds = st.session_state.rounds
+
+    with st.spinner("黄帽思考中..."):
+        yellow_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_yellow_prompt(question, previous_rounds)}],
+            temperature=0.7
+        ).choices[0].message.content
+        yellow = safe_json_parse(yellow_raw, "黄帽")
+
+    yellow_view = yellow['card_1']['content']['viewpoint']
+    if len(previous_rounds) > 0 and st.session_state.votes.get(f"like_yellow_{len(previous_rounds)-1}") != True:
+        yellow_view = ""
+
+    with st.spinner("黑帽反思中..."):
+        black_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_black_prompt(question, yellow_view, previous_rounds)}],
+            temperature=0.7
+        ).choices[0].message.content
+        black = safe_json_parse(black_raw, "黑帽")
+
+    black_view = black['card_1']['content']['viewpoint']
+    if len(previous_rounds) > 0 and st.session_state.votes.get(f"like_black_{len(previous_rounds)-1}") != True:
+        black_view = ""
+
+    with st.spinner("蓝帽总结中..."):
+        blue_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_blue_prompt(question, yellow_view, black_view)}],
+            temperature=0.7
+        ).choices[0].message.content
+        blue = safe_json_parse(blue_raw, "蓝帽")
+
+    st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
+    st.rerun()
+
 # 观点展示区（并排 + 点赞独立）
 for idx, round_data in enumerate(st.session_state.rounds):
     st.markdown(f"## 🎯 第{idx+1}轮观点对决")
