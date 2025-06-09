@@ -31,8 +31,7 @@ def build_yellow_prompt(question, previous_rounds):
     if previous_rounds:
         last_black = previous_rounds[-1].get("black", {}).get("card_1", {}).get("content", {}).get("viewpoint", "")
         if last_black:
-            ref = f"
-请结合上轮黑帽的观点进行回应，特别是他指出的问题或误判：{last_black}"
+            ref = f"\n请结合上轮黑帽的观点进行回应，特别是他指出的问题或误判：{last_black}"
     return f"""你是“黄帽思维者”，你擅长从问题中发现积极可能、被低估的好处，以及值得轻试的方向。
 你不否认困难，但你习惯优先问自己：“这里有没有什么地方，是可以带来转机的？”
 
@@ -62,8 +61,7 @@ def build_black_prompt(question, yellow_viewpoint, previous_rounds):
     if previous_rounds:
         last_yellow = previous_rounds[-1].get("yellow", {}).get("card_1", {}).get("content", {}).get("viewpoint", "")
         if last_yellow:
-            ref = f"
-你还可以进一步回应上轮黄帽的新观点：{last_yellow}"
+            ref = f"\n你还可以进一步回应上轮黄帽的新观点：{last_yellow}"
     return f"""你是“黑帽思维者”，你擅长理性地识别问题中的潜在风险、不可控因素、可能被忽略的限制。
 
 用户的问题是：**{question}**
