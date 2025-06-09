@@ -194,9 +194,13 @@ for idx, round_data in enumerate(st.session_state.rounds):
             with cols[0]:
                 if st.button("👍 喜欢" + (" ✅" if is_liked else ""), key=vote_like_key):
                     st.session_state.votes[vote_like_key] = not is_liked
+                    if not is_liked:
+                        st.session_state.votes[vote_dislike_key] = False
             with cols[1]:
                 if st.button("👎 不喜欢" + (" ✅" if is_disliked else ""), key=vote_dislike_key):
                     st.session_state.votes[vote_dislike_key] = not is_disliked
+                    if not is_disliked:
+                        st.session_state.votes[vote_like_key] = False
 
             if is_liked:
                 st.success("你赞同了这个观点")
