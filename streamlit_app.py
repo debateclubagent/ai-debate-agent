@@ -183,8 +183,8 @@ for idx, round_data in enumerate(st.session_state.rounds):
                 show_key = f"show_training_{role}_{idx}"
                 if show_key not in st.session_state:
                     st.session_state[show_key] = False
-                st.session_state[show_key] = st.toggle("🧠 展开思维训练", key=show_key)
-                if st.session_state[show_key]:
+                show_training = st.toggle("🧠 展开思维训练", key=show_key)
+                if show_training:
                     card2 = card.get("card_2")
                     st.markdown(f"**{card2['title']}**")
                     st.markdown(card2["content"].get("thinking_path", ""))
