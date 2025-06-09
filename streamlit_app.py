@@ -32,8 +32,8 @@ def build_yellow_prompt(question, previous_rounds, votes):
     for i in range(len(votes)//4):
         if votes.get(f"like_yellow_{i}"): vote_summary.append(f"你在第{i+1}轮支持了黄帽观点")
         if votes.get(f"dislike_yellow_{i}"): vote_summary.append(f"你在第{i+1}轮反对了黄帽观点")
-    vote_hint = '
-'.join(vote_summary)
+    vote_hint = "
+".join(vote_summary)
     if previous_rounds:
         last_black = previous_rounds[-1].get("black", {}).get("card_1", {}).get("content", {}).get("viewpoint", "")
         if last_black:
