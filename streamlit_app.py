@@ -25,8 +25,7 @@ def safe_json_parse(raw, label):
         st.text_area("原始返回内容", raw, height=300)
         return None
 
-# 三顶帽子 prompt 构建函数
-
+# 黄帽 Prompt
 def build_yellow_prompt(question, previous_rounds):
     ref = ""
     if previous_rounds:
@@ -57,6 +56,7 @@ def build_yellow_prompt(question, previous_rounds):
   }}
 }}"""
 
+# 黑帽 Prompt
 def build_black_prompt(question, yellow_viewpoint, previous_rounds):
     ref = ""
     if previous_rounds:
@@ -92,6 +92,7 @@ def build_black_prompt(question, yellow_viewpoint, previous_rounds):
   }}
 }}"""
 
+# 蓝帽 Prompt（含倾向趋势分析）
 def build_blue_prompt(question, yellow_viewpoint, black_viewpoint, yellow_vote="neutral", black_vote="neutral"):
     vote_summary = {
         "like": "用户支持该观点 ✅",
@@ -109,46 +110,56 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint, yellow_vote="
 黑帽提出的观点是：“{black_viewpoint}”
 → {vote_summary.get(black_vote, '无')}。
 
-请你基于以上内容，做出以下三件事：
+请你基于以上内容，做出以下四件事：
 1. 综合黄帽与黑帽的出发点，指出它们在思维方式上的异同；
 2. 根据用户的支持倾向，强化其认可方向，辅助其形成独立判断；
-3. 给出你自己的建议或偏好（可以结合理性与情绪的平衡）。
+3. 分析用户过往轮次中的支持倾向变化，判断用户是更偏向乐观探索，还是趋于理性保守；
+4. 给出你自己的建议或偏好（可以结合理性与情绪的平衡）。
 
 请输出以下结构的 JSON（不要加 ```、不要解释）：
 
 {{
   "card": {{
     "title": "总结与判断",
-    "content": "⚖️ 我的判断：..."
+    "content": "⚖️ 我的判断：...",
+    "trend": "📈 用户倾向趋势分析：..."
   }}
 }}"""
 
-# 页面设置
+# ✅ 页面设置
 st.set_page_config(page_title="六顶思考帽 · AI 辩论器", layout="wide")
 st.title("🧠 六顶思考帽 · AI 辩论引导")
 
-# 状态初始化
+# ✅ 状态初始化
 question = st.text_input("请输入你的问题：", placeholder="例如：我要不要离职")
 if "rounds" not in st.session_state:
     st.session_state.rounds = []
 if "votes" not in st.session_state:
     st.session_state.votes = {}
 
-# 投票互斥逻辑
+# ✅ 投票互斥逻辑
 def handle_vote(role, idx, vote_type):
     other = "dislike" if vote_type == "like" else "like"
     st.session_state.votes[f"{role}_{idx}"] = vote_type
     st.session_state.votes.pop(f"{role}_{idx}_{other}", None)
 
-# 卡片展示逻辑
+# ✅ 卡片展示逻辑（增强版）
 def render_card(role, data, idx):
     with st.container():
         st.markdown(f"### {'🟡 黄帽视角' if role == 'yellow' else '⚫ 黑帽视角' if role == 'black' else '🔵 蓝帽总结'}")
         card = data.get("card_1") or data.get("card")
         st.markdown(f"**{card['title']}**")
-        st.markdown(card["content"]["viewpoint"] if isinstance(card["content"], dict) else card["content"])
-        if isinstance(card["content"], dict) and "evidence" in card["content"]:
-            st.markdown(card["content"]["evidence"])
+
+        if isinstance(card["content"], dict):
+            st.markdown(card["content"].get("viewpoint", card["content"].get("content", "")))
+            if "evidence" in card["content"]:
+                st.markdown(card["content"]["evidence"])
+        else:
+            st.markdown(card["content"])
+
+        if role == "blue" and isinstance(card["content"], dict) and "trend" in card["content"]:
+            st.markdown("---")
+            st.markdown(f"📈 **用户倾向趋势分析：** {card['content']['trend']}")
 
         if role in ["yellow", "black"]:
             c1, c2 = st.columns(2)
@@ -158,13 +169,11 @@ def render_card(role, data, idx):
             with c2:
                 if st.button("👎 反对", key=f"dislike_{role}_{idx}"):
                     handle_vote(role, idx, "dislike")
-
-            # 思维训练
             if st.toggle("🧠 展开思维训练", key=f"train_{role}_{idx}"):
                 st.markdown(data["card_2"]["content"]["thinking_path"])
                 st.markdown(data["card_2"]["content"]["training_tip"])
 
-# 轮次展示
+# ✅ 展示历史轮次
 for i, r in enumerate(st.session_state.rounds):
     st.markdown(f"## 🎯 第{i+1}轮对话")
     col1, col2, col3 = st.columns(3)
@@ -172,13 +181,12 @@ for i, r in enumerate(st.session_state.rounds):
     with col2: render_card("black", r["black"], i)
     with col3: render_card("blue", r["blue"], i)
 
-# 开始 / 下一轮
+# ✅ 开始 / 下一轮
 if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 接着 Battle") and question:
     prev = st.session_state.rounds
     yellow_vote = st.session_state.votes.get(f"yellow_{len(prev)-1}", "neutral") if prev else "neutral"
     black_vote = st.session_state.votes.get(f"black_{len(prev)-1}", "neutral") if prev else "neutral"
 
-    yellow_input = "" if yellow_vote != "like" and prev else None
     with st.spinner("黄帽生成中..."):
         y_raw = client.chat.completions.create(
             model="deepseek-chat",
@@ -187,7 +195,7 @@ if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 �
         ).choices[0].message.content
         yellow = safe_json_parse(y_raw, "黄帽")
 
-    yellow_view = yellow['card_1']['content']['viewpoint'] if yellow_vote == "like" or not prev else ""
+    yellow_view = yellow['card_1']['content']['viewpoint'] if yellow else ""
     with st.spinner("黑帽生成中..."):
         b_raw = client.chat.completions.create(
             model="deepseek-chat",
@@ -196,7 +204,7 @@ if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 �
         ).choices[0].message.content
         black = safe_json_parse(b_raw, "黑帽")
 
-    black_view = black['card_1']['content']['viewpoint'] if black_vote == "like" or not prev else ""
+    black_view = black['card_1']['content']['viewpoint'] if black else ""
     with st.spinner("蓝帽总结中..."):
         blue_raw = client.chat.completions.create(
             model="deepseek-chat",
@@ -208,7 +216,7 @@ if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 �
     st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
     st.rerun()
 
-# 最终总结按钮
+# ✅ 最终总结
 if st.button("🧾 总结所有观点") and st.session_state.rounds:
     last = st.session_state.rounds[-1]
     y_view = last["yellow"]["card_1"]["content"]["viewpoint"]
@@ -224,3 +232,5 @@ if st.button("🧾 总结所有观点") and st.session_state.rounds:
         summary = safe_json_parse(summary_raw, "最终蓝帽")
         st.markdown("### 🔷 最终蓝帽总结")
         st.markdown(summary["card"]["content"])
+        if "trend" in summary["card"]["content"]:
+            st.markdown(f"📈 **用户倾向趋势分析：** {summary['card']['content']['trend']}")
