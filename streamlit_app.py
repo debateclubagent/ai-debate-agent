@@ -25,9 +25,8 @@ def safe_json_parse(raw, label):
         st.text_area("原始返回内容", raw, height=300)
         return None
 
-# 三顶帽子 prompt 构建函数
-
-def build_yellow_prompt(question, previous_rounds):
+# Prompt 构建函数
+def build_yellow_prompt(question, previous_rounds, votes):
     ref = ""
     if previous_rounds:
         last_black = previous_rounds[-1].get("black", {}).get("card_1", {}).get("content", {}).get("viewpoint", "")
@@ -57,7 +56,7 @@ def build_yellow_prompt(question, previous_rounds):
   }}
 }}"""
 
-def build_black_prompt(question, yellow_viewpoint, previous_rounds):
+def build_black_prompt(question, yellow_viewpoint, previous_rounds, votes):
     ref = ""
     if previous_rounds:
         last_yellow = previous_rounds[-1].get("yellow", {}).get("card_1", {}).get("content", {}).get("viewpoint", "")
@@ -92,13 +91,24 @@ def build_black_prompt(question, yellow_viewpoint, previous_rounds):
   }}
 }}"""
 
-def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
+def build_blue_prompt(question, yellow_viewpoint, black_viewpoint, votes):
+    support_summary = []
+    for i in range(len(votes)//4):
+        if votes.get(f"like_yellow_{i}"): support_summary.append(f"第{i+1}轮用户支持黄帽")
+        if votes.get(f"dislike_yellow_{i}"): support_summary.append(f"第{i+1}轮用户不支持黄帽")
+        if votes.get(f"like_black_{i}"): support_summary.append(f"第{i+1}轮用户支持黑帽")
+        if votes.get(f"dislike_black_{i}"): support_summary.append(f"第{i+1}轮用户不支持黑帽")
+    vote_text = "\n".join(support_summary)
+
     return f"""你是“蓝帽思维者”，你的职责是整合前两者的观点，并帮助用户达成理性的判断。
 
 用户的问题是：**{question}**
 
 黄帽提出的观点是：“{yellow_viewpoint}”
 黑帽提出的观点是：“{black_viewpoint}”
+
+以下是用户在不同轮次中对观点的倾向：
+{vote_text}
 
 请你基于以上内容，给出总结性判断，包括：
 - 你如何看待两者的出发点？
@@ -114,113 +124,113 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
   }}
 }}"""
 
-# 👇👇👇 主程序入口逻辑
+# 页面设置与初始化
+st.set_page_config(page_title="六顶思考帽 · AI 辩论器", layout="wide")
+st.title("🧠 六顶思考帽 · AI 辩论引导")
 
-st.set_page_config(page_title="六顶思考帽观点生成器", layout="wide")
-st.title("🎩 六顶思考帽：AI 观点生成器")
-
-question = st.text_area("请输入你的问题：", placeholder="例如：我要不要离职")
+question = st.text_input("请输入你的问题：", placeholder="例如：我要不要离职")
 if "rounds" not in st.session_state:
     st.session_state.rounds = []
-if "current_index" not in st.session_state:
-    st.session_state.current_index = 0
+if "votes" not in st.session_state:
+    st.session_state.votes = {}
+if "show_training" not in st.session_state:
+    st.session_state.show_training = {}
 
-# 按钮
-col1, col2, col3 = st.columns(3)
-generate = col1.button("生成多角色观点")
-continue_battle = col2.button("接着 Battle")
-only_summary = col3.button("蓝帽总结")
+# 生成新一轮观点按钮
+if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 接着 Battle") and question:
+    previous_rounds = st.session_state.rounds
+    votes_snapshot = st.session_state.votes.copy()
 
-# 展示卡片内容
-def display_card(card):
-    for k, v in card["content"].items():
-        st.write(v)
-
-# 生成一轮
-def generate_round():
-    with st.spinner("🟡 黄帽思考中..."):
-        yellow_prompt = build_yellow_prompt(question, st.session_state.rounds)
-        yellow_response = client.chat.completions.create(
+    with st.spinner("黄帽思考中..."):
+        yellow_raw = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": yellow_prompt}]
-        )
-        yellow_data = safe_json_parse(yellow_response.choices[0].message.content, "黄帽")
+            messages=[{"role": "user", "content": build_yellow_prompt(question, previous_rounds, votes_snapshot)}],
+            temperature=0.7
+        ).choices[0].message.content
+        yellow = safe_json_parse(yellow_raw, "黄帽")
 
-    if yellow_data:
-        yellow_view = yellow_data.get("card_1", {}).get("content", {}).get("viewpoint", "")
-        with st.spinner("⚫ 黑帽思考中..."):
-            black_prompt = build_black_prompt(question, yellow_view, st.session_state.rounds)
-            black_response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[{"role": "user", "content": black_prompt}]
-            )
-            black_data = safe_json_parse(black_response.choices[0].message.content, "黑帽")
+    yellow_view = yellow['card_1']['content']['viewpoint']
 
-        if black_data:
-            black_view = black_data.get("card_1", {}).get("content", {}).get("viewpoint", "")
-            with st.spinner("🔵 蓝帽总结中..."):
-                blue_prompt = build_blue_prompt(question, yellow_view, black_view)
-                blue_response = client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[{"role": "user", "content": blue_prompt}]
-                )
-                blue_data = safe_json_parse(blue_response.choices[0].message.content, "蓝帽")
+    with st.spinner("黑帽反思中..."):
+        black_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_black_prompt(question, yellow_view, previous_rounds, votes_snapshot)}],
+            temperature=0.7
+        ).choices[0].message.content
+        black = safe_json_parse(black_raw, "黑帽")
 
-            st.session_state.rounds.append({
-                "yellow": yellow_data,
-                "black": black_data,
-                "blue": blue_data
-            })
+    black_view = black['card_1']['content']['viewpoint']
+
+    with st.spinner("蓝帽总结中..."):
+        blue_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_blue_prompt(question, yellow_view, black_view, votes_snapshot)}],
+            temperature=0.7
+        ).choices[0].message.content
+        blue = safe_json_parse(blue_raw, "蓝帽")
+
+    st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
     st.rerun()
 
-# 蓝帽总结
-if only_summary and question:
-    if not st.session_state.rounds:
-        st.warning("⚠️ 无法生成蓝帽总结，前置观点缺失")
-    else:
-        last_round = st.session_state.rounds[-1]
-        yellow_view = last_round["yellow"]["card_1"]["content"]["viewpoint"]
-        black_view = last_round["black"]["card_1"]["content"]["viewpoint"]
-        with st.spinner("🔵 蓝帽总结中..."):
-            blue_prompt = build_blue_prompt(question, yellow_view, black_view)
-            blue_response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[{"role": "user", "content": blue_prompt}]
-            )
-            blue_data = safe_json_parse(blue_response.choices[0].message.content, "蓝帽")
-            last_round["blue"] = blue_data
-        st.rerun()
+# 观点展示区（并排 + 点赞独立 + 思维训练）
+for idx, round_data in enumerate(st.session_state.rounds):
+    st.markdown(f"## 🎯 第{idx+1}轮观点对决")
+    col1, col2, col3 = st.columns(3)
+    for role, col in zip(["yellow", "black", "blue"], [col1, col2, col3]):
+        with col:
+            vote_like_key = f"like_{role}_{idx}"
+            vote_dislike_key = f"dislike_{role}_{idx}"
+            is_liked = st.session_state.votes.get(vote_like_key, False)
+            is_disliked = st.session_state.votes.get(vote_dislike_key, False)
 
-if generate and question:
-    generate_round()
+            card = round_data[role]
+            card1 = card.get("card_1") or card.get("card")
+            st.markdown(f"### {'🟡 黄帽' if role=='yellow' else '⚫ 黑帽' if role=='black' else '🔵 蓝帽'}")
+            st.markdown(f"**{card1['title']}**")
+            st.markdown(card1["content"].get("viewpoint") if isinstance(card1["content"], dict) else card1["content"])
+            if isinstance(card1["content"], dict) and "evidence" in card1["content"]:
+                st.markdown(card1["content"]["evidence"])
 
-# 展示内容：三列展示黄黑蓝
-for i, r in enumerate(st.session_state.rounds):
-    st.markdown(f"## 🎯 第{i+1}轮观点对决")
-    col_y, col_b, col_bl = st.columns(3)
+            if role in ["yellow", "black"] and card.get("card_2"):
+                show_key = f"show_training_{role}_{idx}"
+                if show_key not in st.session_state:
+                    st.session_state[show_key] = False
+                show_training = st.toggle("🧠 展开思维训练", key=show_key)
+                if show_training:
+                    card2 = card.get("card_2")
+                    st.markdown(f"**{card2['title']}**")
+                    st.markdown(card2["content"].get("thinking_path", ""))
+                    st.markdown(card2["content"].get("training_tip", ""))
 
-    with col_y:
-        st.markdown("🟡 **黄帽视角**")
-        if "card_1" in r["yellow"]:
-            with st.expander(r["yellow"]["card_1"]["title"], expanded=False):
-                display_card(r["yellow"]["card_1"])
-                if st.button(f"🧠 思维训练 - 黄帽 第{i+1}轮", key=f"yellow_train_{i}"):
-                    display_card(r["yellow"]["card_2"])
+            cols = st.columns(2)
+            with cols[0]:
+                if st.button("👍 支持" + (" ✅" if is_liked else ""), key=vote_like_key):
+                    st.session_state.votes[vote_like_key] = not is_liked
+                    if not is_liked:
+                        st.session_state.votes[vote_dislike_key] = False
+            with cols[1]:
+                if st.button("👎 不支持" + (" ✅" if is_disliked else ""), key=vote_dislike_key):
+                    st.session_state.votes[vote_dislike_key] = not is_disliked
+                    if not is_disliked:
+                        st.session_state.votes[vote_like_key] = False
 
-    with col_b:
-        st.markdown("⚫ **黑帽视角**")
-        if "card_1" in r["black"]:
-            with st.expander(r["black"]["card_1"]["title"], expanded=False):
-                display_card(r["black"]["card_1"])
-                if st.button(f"🧠 思维训练 - 黑帽 第{i+1}轮", key=f"black_train_{i}"):
-                    display_card(r["black"]["card_2"])
+            if is_liked:
+                st.success("你支持了这个观点")
+            elif is_disliked:
+                st.error("你不支持这个观点")
 
-    with col_bl:
-        st.markdown("🔵 **蓝帽总结**")
-        if r.get("blue"):
-            with st.expander(r["blue"]["card"]["title"], expanded=False):
-                st.write(r["blue"]["card"]["content"])
-
-# 接着 Battle 新一轮
-if continue_battle and question:
-    generate_round()
+# 总结按钮逻辑
+if st.button("🧾 总结观点") and st.session_state.rounds:
+    last = st.session_state.rounds[-1]
+    yellow_last = last["yellow"]["card_1"]["content"]["viewpoint"]
+    black_last = last["black"]["card_1"]["content"]["viewpoint"]
+    with st.spinner("蓝帽总结中..."):
+        blue_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_blue_prompt(question, yellow_last, black_last, st.session_state.votes)}],
+            temperature=0.7
+        ).choices[0].message.content
+        blue = safe_json_parse(blue_raw, "蓝帽")
+        st.markdown("### 🧠 蓝帽新总结")
+        st.markdown(blue["card"]["content"])
+        st.session_state.rounds[-1]["blue"] = blue
