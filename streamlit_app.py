@@ -68,6 +68,30 @@ def build_yellow_prompt(question, previous_rounds, votes):
 
 用户的问题是：**{question}**{ref}
 
+{vote_hint}
+
+请按以下结构输出，并确保是合法 JSON：
+
+{{
+  "card_1": {{
+    "title": "问题的正向判断",
+    "content": {{
+      "viewpoint": "🎯 我的观点：...",
+      "evidence": "📚 我的依据：..."
+    }}
+  }},
+  "card_2": {{
+    "title": "思维方式与训练建议",
+    "content": {{
+      "thinking_path": "🧠 我为什么会这样思考：...",
+      "training_tip": "🧩 你也可以这样练：..."
+    }}
+  }}
+}}"""你是“黄帽思维者”，你擅长从问题中发现积极可能、被低估的好处，以及值得轻试的方向。
+你不否认困难，但你习惯优先问自己：“这里有没有什么地方，是可以带来转机的？”
+
+用户的问题是：**{question}**{ref}
+
 请按以下结构输出，并确保是合法 JSON：
 
 {{
@@ -94,14 +118,43 @@ def build_black_prompt(question, yellow_viewpoint, previous_rounds, votes):
         if votes.get(f"like_black_{i}"): vote_summary.append(f"你在第{i+1}轮支持了黑帽观点")
         if votes.get(f"dislike_black_{i}"): vote_summary.append(f"你在第{i+1}轮反对了黑帽观点")
         if votes.get(f"like_yellow_{i}"): vote_summary.append(f"你在第{i+1}轮更倾向黄帽")
-    vote_hint = '
-'.join(vote_summary)
+    vote_hint = "
+".join(vote_summary)
     if previous_rounds:
         last_yellow = previous_rounds[-1].get("yellow", {}).get("card_1", {}).get("content", {}).get("viewpoint", "")
         if last_yellow:
             ref = f"
 你还可以进一步回应上轮黄帽的新观点：{last_yellow}"
     return f"""你是“黑帽思维者”，你擅长理性地识别问题中的潜在风险、不可控因素、可能被忽略的限制。
+
+用户的问题是：**{question}**
+
+请你围绕“黄帽观点中提到的积极方向”进行反思，并展开辩论：
+你必须引用黄帽的某个具体说法进行回应，例如：“黄帽提到...，但我认为...”
+请确保回应清晰、有针对性，体现辩论感。
+
+黄帽的观点是：“{yellow_viewpoint}”{ref}
+
+{vote_hint}
+
+请按以下结构输出，并确保是合法 JSON：
+
+{{
+  "card_1": {{
+    "title": "潜在风险与现实限制",
+    "content": {{
+      "viewpoint": "💣 我的观点：...",
+      "evidence": "📉 我的依据：..."
+    }}
+  }},
+  "card_2": {{
+    "title": "思维方式与训练建议",
+    "content": {{
+      "thinking_path": "🧠 我为什么会这样思考：...",
+      "training_tip": "🧩 你也可以这样练：..."
+    }}
+  }}
+}}"""你是“黑帽思维者”，你擅长理性地识别问题中的潜在风险、不可控因素、可能被忽略的限制。
 
 用户的问题是：**{question}**
 
