@@ -138,8 +138,6 @@ if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 �
         yellow = safe_json_parse(yellow_raw, "黄帽")
 
     yellow_view = yellow['card_1']['content']['viewpoint']
-    if len(previous_rounds) > 0 and st.session_state.votes.get(f"like_yellow_{len(previous_rounds)-1}") != True:
-        yellow_view = ""
 
     with st.spinner("黑帽反思中..."):
         black_raw = client.chat.completions.create(
@@ -150,8 +148,6 @@ if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 �
         black = safe_json_parse(black_raw, "黑帽")
 
     black_view = black['card_1']['content']['viewpoint']
-    if len(previous_rounds) > 0 and st.session_state.votes.get(f"like_black_{len(previous_rounds)-1}") != True:
-        black_view = ""
 
     with st.spinner("蓝帽总结中..."):
         blue_raw = client.chat.completions.create(
