@@ -25,8 +25,7 @@ def safe_json_parse(raw, label):
         st.text_area("原始返回内容", raw, height=300)
         return None
 
-# 三顶帽子 prompt 构建函数
-
+# Prompt 构建函数
 def build_yellow_prompt(question, previous_rounds):
     ref = ""
     if previous_rounds:
@@ -105,7 +104,7 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
 - 你对该问题的整合性看法
 - 如果是你，你会如何决策？理由是什么？
 
-请输出以下结构的 JSON（不要加 ```、不要解释）：
+请输出以下结构的 JSON：
 
 {{
   "card": {{
@@ -114,59 +113,55 @@ def build_blue_prompt(question, yellow_viewpoint, black_viewpoint):
   }}
 }}"""
 
-# ✅ 页面设置
+# 页面设置与初始化
 st.set_page_config(page_title="六顶思考帽 · AI 辩论器", layout="wide")
 st.title("🧠 六顶思考帽 · AI 辩论引导")
 
-# ✅ 状态初始化
 question = st.text_input("请输入你的问题：", placeholder="例如：我要不要离职")
 if "rounds" not in st.session_state:
     st.session_state.rounds = []
-if "show_training" not in st.session_state:
-    st.session_state.show_training = {}
 if "votes" not in st.session_state:
     st.session_state.votes = {}
 
-# ✅ 卡片组件
-def render_card(role, data, round_index):
-    with st.container():
-        st.markdown(f"""
-        <div style='border:1px solid #ddd; border-radius:12px; padding:16px; background-color:#fdfdfd;'>
-        <h4>{'🟡 黄帽视角' if role == 'yellow' else '⚫ 黑帽视角' if role == 'black' else '🔵 蓝帽总结'}</h4>
-        """, unsafe_allow_html=True)
-        card1 = data.get("card_1") or data.get("card")
-        st.markdown(f"**{card1['title']}**")
-        st.markdown(card1["content"]["viewpoint"] if isinstance(card1["content"], dict) else card1["content"])
-        if isinstance(card1["content"], dict) and "evidence" in card1["content"]:
-            st.markdown(card1["content"]["evidence"])
-
-        # 整合大卡片内的训练 + 投票
-        if role in ["yellow", "black"]:
-            card2 = data.get("card_2", {})
-            if card2:
-                st.markdown(f"**{card2['title']}**")
-                st.markdown(card2["content"].get("thinking_path", ""))
-                st.markdown(card2["content"].get("training_tip", ""))
-
-        col1, col2 = st.columns(2)
-        vote_key = f"{role}_{round_index}"
-        with col1:
-            if st.button("👍 喜欢", key=f"like_{vote_key}"):
-                st.session_state.votes[vote_key] = "like"
-        with col2:
-            if st.button("👎 不喜欢", key=f"dislike_{vote_key}"):
-                st.session_state.votes[vote_key] = "dislike"
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# ✅ 多轮展示
+# 观点展示区
 for idx, round_data in enumerate(st.session_state.rounds):
     st.markdown(f"## 🎯 第{idx+1}轮观点对决")
-    render_card("yellow", round_data["yellow"], idx)
-    render_card("black", round_data["black"], idx)
-    render_card("blue", round_data["blue"], idx)
+    col1, col2, col3 = st.columns(3)
+    for role, col in zip(["yellow", "black", "blue"], [col1, col2, col3]):
+        with col:
+            vote_key = f"{role}_{idx}"
+            is_liked = st.session_state.votes.get(vote_key) == "like"
+            is_disliked = st.session_state.votes.get(vote_key) == "dislike"
 
-# ✅ 生成新一轮观点按钮
+            with st.expander(f"{'🟡 黄帽视角' if role == 'yellow' else '⚫ 黑帽视角' if role == 'black' else '🔵 蓝帽总结'}", expanded=True):
+                card = round_data[role]
+                card1 = card.get("card_1") or card.get("card")
+                st.markdown(f"**{card1['title']}**")
+                st.markdown(card1["content"].get("viewpoint") if isinstance(card1["content"], dict) else card1["content"])
+                if isinstance(card1["content"], dict) and "evidence" in card1["content"]:
+                    st.markdown(card1["content"]["evidence"])
+
+                if role in ["yellow", "black"]:
+                    card2 = card.get("card_2", {})
+                    if card2:
+                        st.markdown(f"**{card2['title']}**")
+                        st.markdown(card2["content"].get("thinking_path", ""))
+                        st.markdown(card2["content"].get("training_tip", ""))
+
+                cols = st.columns(2)
+                with cols[0]:
+                    if st.button("👍 喜欢" + (" ✅" if is_liked else ""), key=f"like_{vote_key}"):
+                        st.session_state.votes[vote_key] = "like"
+                with cols[1]:
+                    if st.button("👎 不喜欢" + (" ✅" if is_disliked else ""), key=f"dislike_{vote_key}"):
+                        st.session_state.votes[vote_key] = "dislike"
+
+                if is_liked:
+                    st.success("你赞同了这个观点")
+                elif is_disliked:
+                    st.error("你不赞同这个观点")
+
+# 生成新一轮观点
 if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 接着 Battle") and question:
     previous_rounds = st.session_state.rounds
 
@@ -205,8 +200,8 @@ if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 �
     st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
     st.rerun()
 
-# ✅ 蓝帽总结
-if st.button("🧾 总结观点"):
+# 蓝帽新总结输出
+if st.button("🧾 总结观点") and st.session_state.rounds:
     last = st.session_state.rounds[-1]
     yellow_last = last["yellow"]["card_1"]["content"]["viewpoint"]
     black_last = last["black"]["card_1"]["content"]["viewpoint"]
