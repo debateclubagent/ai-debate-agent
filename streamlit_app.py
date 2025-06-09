@@ -192,20 +192,20 @@ for idx, round_data in enumerate(st.session_state.rounds):
 
             cols = st.columns(2)
             with cols[0]:
-                if st.button("👍 喜欢" + (" ✅" if is_liked else ""), key=vote_like_key):
+                if st.button("👍 支持" + (" ✅" if is_liked else ""), key=vote_like_key):
                     st.session_state.votes[vote_like_key] = not is_liked
                     if not is_liked:
                         st.session_state.votes[vote_dislike_key] = False
             with cols[1]:
-                if st.button("👎 不喜欢" + (" ✅" if is_disliked else ""), key=vote_dislike_key):
+                if st.button("👎 不支持" + (" ✅" if is_disliked else ""), key=vote_dislike_key):
                     st.session_state.votes[vote_dislike_key] = not is_disliked
                     if not is_disliked:
                         st.session_state.votes[vote_like_key] = False
 
             if is_liked:
-                st.success("你赞同了这个观点")
+                st.success("你支持了这个观点")
             elif is_disliked:
-                st.error("你不赞同这个观点")
+                st.error("你不支持这个观点")
 
 # 总结按钮逻辑
 if st.button("🧾 总结观点") and st.session_state.rounds:
