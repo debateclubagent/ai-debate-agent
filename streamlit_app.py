@@ -122,6 +122,8 @@ if "rounds" not in st.session_state:
     st.session_state.rounds = []
 if "votes" not in st.session_state:
     st.session_state.votes = {}
+if "show_training" not in st.session_state:
+    st.session_state.show_training = {}
 
 # 生成新一轮观点按钮
 if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 接着 Battle") and question:
@@ -162,7 +164,7 @@ if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 �
     st.session_state.rounds.append({"yellow": yellow, "black": black, "blue": blue})
     st.rerun()
 
-# 观点展示区（并排 + 点赞独立）
+# 观点展示区（并排 + 点赞独立 + 思维训练）
 for idx, round_data in enumerate(st.session_state.rounds):
     st.markdown(f"## 🎯 第{idx+1}轮观点对决")
     col1, col2, col3 = st.columns(3)
@@ -181,9 +183,13 @@ for idx, round_data in enumerate(st.session_state.rounds):
             if isinstance(card1["content"], dict) and "evidence" in card1["content"]:
                 st.markdown(card1["content"]["evidence"])
 
-            if role in ["yellow", "black"]:
-                card2 = card.get("card_2", {})
-                if card2:
+            if role in ["yellow", "black"] and card.get("card_2"):
+                show_key = f"show_training_{role}_{idx}"
+                if show_key not in st.session_state:
+                    st.session_state[show_key] = False
+                st.session_state[show_key] = st.toggle("🧠 展开思维训练", key=show_key)
+                if st.session_state[show_key]:
+                    card2 = card.get("card_2")
                     st.markdown(f"**{card2['title']}**")
                     st.markdown(card2["content"].get("thinking_path", ""))
                     st.markdown(card2["content"].get("training_tip", ""))
@@ -200,3 +206,18 @@ for idx, round_data in enumerate(st.session_state.rounds):
                 st.success("你赞同了这个观点")
             elif is_disliked:
                 st.error("你不赞同这个观点")
+
+# 总结按钮逻辑
+if st.button("🧾 总结观点") and st.session_state.rounds:
+    last = st.session_state.rounds[-1]
+    yellow_last = last["yellow"]["card_1"]["content"]["viewpoint"]
+    black_last = last["black"]["card_1"]["content"]["viewpoint"]
+    with st.spinner("蓝帽总结中..."):
+        blue_raw = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": build_blue_prompt(question, yellow_last, black_last)}],
+            temperature=0.7
+        ).choices[0].message.content
+        blue = safe_json_parse(blue_raw, "蓝帽")
+        st.markdown("### 🧠 蓝帽新总结")
+        st.markdown(blue["card"]["content"])
