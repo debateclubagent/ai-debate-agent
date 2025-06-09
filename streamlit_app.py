@@ -124,12 +124,16 @@ if "rounds" not in st.session_state:
     st.session_state.rounds = []
 if "show_training" not in st.session_state:
     st.session_state.show_training = {}
+if "votes" not in st.session_state:
+    st.session_state.votes = {}
 
 # ✅ 卡片组件
 def render_card(role, data, round_index):
     with st.container():
-        st.markdown("---")
-        st.markdown(f"### {'🟡 黄帽' if role == 'yellow' else '⚫ 黑帽' if role == 'black' else '🔵 蓝帽总结'}")
+        st.markdown(f"""
+        <div style='border:1px solid #ddd; border-radius:12px; padding:16px; background-color:#fdfdfd;'>
+        <h4>{'🟡 黄帽视角' if role == 'yellow' else '⚫ 黑帽视角' if role == 'black' else '🔵 蓝帽总结'}</h4>
+        """, unsafe_allow_html=True)
         card1 = data.get("card_1") or data.get("card")
         st.markdown(f"**{card1['title']}**")
         st.markdown(card1["content"]["viewpoint"] if isinstance(card1["content"], dict) else card1["content"])
@@ -141,18 +145,20 @@ def render_card(role, data, round_index):
             if key not in st.session_state:
                 st.session_state[key] = False
 
-            with st.container():
-                cols = st.columns([1, 1, 4])
-                with cols[0]:
-                    st.button("👍", key=f"like_{role}_{round_index}")
-                with cols[1]:
-                    st.button("👎", key=f"dislike_{role}_{round_index}")
-                with cols[2]:
-                    st.toggle("🧠 思维训练", key=key)
+            cols = st.columns([1, 1, 3])
+            with cols[0]:
+                if st.button("👍", key=f"like_{role}_{round_index}"):
+                    st.session_state.votes[f"{role}_{round_index}"] = "like"
+            with cols[1]:
+                if st.button("👎", key=f"dislike_{role}_{round_index}"):
+                    st.session_state.votes[f"{role}_{round_index}"] = "dislike"
+            with cols[2]:
+                st.toggle("🧠 思维训练", key=key)
 
             if st.session_state[key]:
                 st.markdown(data["card_2"]["content"]["thinking_path"])
                 st.markdown(data["card_2"]["content"]["training_tip"])
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ✅ 多轮展示
 for idx, round_data in enumerate(st.session_state.rounds):
@@ -174,18 +180,28 @@ if st.button("开始第一轮" if len(st.session_state.rounds) == 0 else "🔁 �
         ).choices[0].message.content
         yellow = safe_json_parse(yellow_raw, "黄帽")
 
+    yellow_view = yellow['card_1']['content']['viewpoint']
+    if len(previous_rounds) > 0:
+        if st.session_state.votes.get(f"yellow_{len(previous_rounds)-1}") != "like":
+            yellow_view = ""
+
     with st.spinner("黑帽反思中..."):
         black_raw = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": build_black_prompt(question, yellow['card_1']['content']['viewpoint'], previous_rounds)}],
+            messages=[{"role": "user", "content": build_black_prompt(question, yellow_view, previous_rounds)}],
             temperature=0.7
         ).choices[0].message.content
         black = safe_json_parse(black_raw, "黑帽")
 
+    black_view = black['card_1']['content']['viewpoint']
+    if len(previous_rounds) > 0:
+        if st.session_state.votes.get(f"black_{len(previous_rounds)-1}") != "like":
+            black_view = ""
+
     with st.spinner("蓝帽总结中..."):
         blue_raw = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": build_blue_prompt(question, yellow['card_1']['content']['viewpoint'], black['card_1']['content']['viewpoint'])}],
+            messages=[{"role": "user", "content": build_blue_prompt(question, yellow_view, black_view)}],
             temperature=0.7
         ).choices[0].message.content
         blue = safe_json_parse(blue_raw, "蓝帽")
