@@ -2,13 +2,18 @@ import streamlit as st
 import json
 from openai import OpenAI
 
-# ✅ Set page config first
+# ✅ 必须第一句：设置页面配置
 st.set_page_config(page_title="Six Thinking Hats · AI Debate", layout="wide")
 
-# Language toggle
-lang = st.selectbox("🌐 Language / 语言", options=["English", "中文"], index=0)
+# ✅ 初始语言状态（不能用 selectbox 直接赋值）
+if "lang" not in st.session_state:
+    st.session_state.lang = "English"
 
-# i18n Dictionary
+# ✅ 语言切换控件
+lang = st.selectbox("🌐 Language / 语言", options=["English", "中文"], index=0 if st.session_state.lang == "English" else 1)
+st.session_state.lang = lang
+
+# ✅ 文本字典
 T = {
     "title": {"English": "🧠 Six Thinking Hats · AI Debate Guide", "中文": "🧠 六顶思考帽 · AI 辩论引导"},
     "question_input": {"English": "Enter your question:", "中文": "请输入你的问题："},
@@ -28,7 +33,7 @@ T = {
 st.title(T["title"][lang])
 question = st.text_input(T["question_input"][lang], placeholder=T["question_ph"][lang])
 
-# State
+# ✅ 初始化状态
 if "rounds" not in st.session_state:
     st.session_state.rounds = []
 if "votes" not in st.session_state:
@@ -36,11 +41,11 @@ if "votes" not in st.session_state:
 if "final_summary" not in st.session_state:
     st.session_state.final_summary = None
 
-# OpenAI client
+# ✅ 初始化 OpenAI
 api_key = st.secrets["DEEPSEEK_API_KEY"]
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-# JSON safe parser
+# ✅ JSON 安全解析
 def safe_json_parse(raw, label):
     if not raw or not raw.strip():
         st.warning(f"⚠️ {label} output is empty.")
@@ -54,7 +59,7 @@ def safe_json_parse(raw, label):
         st.text_area("Raw response", raw, height=300)
         return None
 
-# Prompt builders
+# ✅ Prompt 构建函数
 def build_yellow_prompt(q, prev):
     ref = ""
     if prev:
@@ -137,13 +142,13 @@ Return this JSON:
   }}
 }}"""
 
-# Voting logic
+# ✅ 投票逻辑
 def handle_vote(role, idx, vote_type):
     other = "dislike" if vote_type == "like" else "like"
     st.session_state.votes[f"{role}_{idx}"] = vote_type
     st.session_state.votes.pop(f"{role}_{idx}_{other}", None)
 
-# Card render
+# ✅ 卡片渲染
 def render_card(role, data, idx):
     role_label = {"yellow": "🟡 Yellow Hat", "black": "⚫ Black Hat"}
     st.markdown(f"### {role_label[role]}")
@@ -168,14 +173,14 @@ def render_card(role, data, idx):
         st.markdown(data["card_2"]["content"]["thinking_path"])
         st.markdown(data["card_2"]["content"]["training_tip"])
 
-# Show previous rounds
+# ✅ 展示历史轮次
 for i, r in enumerate(st.session_state.rounds):
     st.markdown(f"## 🎯 {T['round_title'][lang]} {i+1}")
     col1, col2 = st.columns(2)
     with col1: render_card("yellow", r["yellow"], i)
     with col2: render_card("black", r["black"], i)
 
-# Generate new round
+# ✅ 开始新一轮
 if st.button(T["start"][lang] if not st.session_state.rounds else T["continue"][lang]) and question:
     prev = st.session_state.rounds
     yellow_vote = st.session_state.votes.get(f"yellow_{len(prev)-1}", "neutral") if prev else "neutral"
@@ -202,7 +207,7 @@ if st.button(T["start"][lang] if not st.session_state.rounds else T["continue"][
     st.session_state.rounds.append({"yellow": yellow, "black": black})
     st.rerun()
 
-# Final summary
+# ✅ 蓝帽最终总结
 if st.button(T["summarize"][lang]) and st.session_state.rounds:
     if not st.session_state.final_summary:
         last = st.session_state.rounds[-1]
