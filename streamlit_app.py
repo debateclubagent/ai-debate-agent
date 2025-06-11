@@ -2,39 +2,33 @@ import streamlit as st
 import json
 from openai import OpenAI
 
-# ✅ 1. 先设置页面配置（必须是第一条 Streamlit 语句）
+# ✅ Must be the very first Streamlit command
 st.set_page_config(page_title="Six Thinking Hats · AI Debate", layout="wide")
 
-# ✅ 2. 初始化语言状态
-if "lang" not in st.session_state:
-    st.session_state.lang = "English"
-
-# ✅ 3. 渲染语言切换控件
-lang = st.selectbox("🌐 Language / 语言", options=["English", "中文"], index=0 if st.session_state.lang == "English" else 1)
-st.session_state.lang = lang
-
-# ✅ 4. 放在 set_page_config 后定义文本字典
+# ✅ Text dictionary (English only)
 T = {
-    "title": {"English": "🧠 Six Thinking Hats · AI Debate Guide", "中文": "🧠 六顶思考帽 · AI 辩论引导"},
-    "question_input": {"English": "Enter your question:", "中文": "请输入你的问题："},
-    "question_ph": {"English": "e.g., Should I quit my job?", "中文": "例如：我要不要离职"},
-    "start": {"English": "Start First Round", "中文": "开始第一轮"},
-    "continue": {"English": "🔁 Continue Battle", "中文": "🔁 接着 Battle"},
-    "round_title": {"English": "Round", "中文": "第"},
-    "summarize": {"English": "🧾 Summarize All Viewpoints", "中文": "🧾 总结所有观点"},
-    "final_summary": {"English": "🔷 Final Blue Hat Summary", "中文": "🔷 最终蓝帽总结"},
-    "support": {"English": "👍 Support", "中文": "👍 支持"},
-    "oppose": {"English": "👎 Oppose", "中文": "👎 反对"},
-    "voted_support": {"English": "✅ Supported", "中文": "✅ 已支持"},
-    "voted_oppose": {"English": "❌ Opposed", "中文": "❌ 已反对"},
-    "thinking_train": {"English": "🧠 Expand Thinking Practice", "中文": "🧠 展开思维训练"},
+    "title": "🧠 Six Thinking Hats · AI Debate Guide",
+    "question_input": "Enter your question:",
+    "question_ph": "e.g., Should I quit my job?",
+    "start": "Start First Round",
+    "continue": "🔁 Continue Battle",
+    "round_title": "Round",
+    "summarize": "🗞️ Summarize All Viewpoints",
+    "final_summary": "🔷 Final Blue Hat Summary",
+    "support": "👍 Support",
+    "oppose": "👎 Oppose",
+    "voted_support": "[✓] Supported",
+    "voted_oppose": "[X] Opposed",
+    "thinking_train": "🧠 Expand Thinking Practice"
 }
 
-# ✅ 5. 初始化界面元素
-st.title(T["title"][lang])
-question = st.text_input(T["question_input"][lang], placeholder=T["question_ph"][lang])
+# ✅ Page title
+st.title(T["title"])
 
-# ✅ 6. 初始化状态
+# ✅ Question input
+question = st.text_input(T["question_input"], placeholder=T["question_ph"])
+
+# ✅ App state
 if "rounds" not in st.session_state:
     st.session_state.rounds = []
 if "votes" not in st.session_state:
@@ -42,11 +36,11 @@ if "votes" not in st.session_state:
 if "final_summary" not in st.session_state:
     st.session_state.final_summary = None
 
-# ✅ 7. 初始化 OpenAI 客户端
+# ✅ OpenAI client
 api_key = st.secrets["DEEPSEEK_API_KEY"]
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-# ✅ 8. 通用 JSON 安全解析函数
+# ✅ JSON safe parser
 def safe_json_parse(raw, label):
     if not raw or not raw.strip():
         st.warning(f"⚠️ {label} output is empty.")
@@ -60,7 +54,7 @@ def safe_json_parse(raw, label):
         st.text_area("Raw response", raw, height=300)
         return None
 
-# ✅ 9. Prompt 构建函数们
+# ✅ Prompt builders
 def build_yellow_prompt(q, prev):
     ref = ""
     if prev:
@@ -143,13 +137,13 @@ Return this JSON:
   }}
 }}"""
 
-# ✅ 10. 投票逻辑
+# ✅ Voting logic
 def handle_vote(role, idx, vote_type):
     other = "dislike" if vote_type == "like" else "like"
     st.session_state.votes[f"{role}_{idx}"] = vote_type
     st.session_state.votes.pop(f"{role}_{idx}_{other}", None)
 
-# ✅ 11. 卡片渲染函数
+# ✅ Render debate card
 def render_card(role, data, idx):
     role_label = {"yellow": "🟡 Yellow Hat", "black": "⚫ Black Hat"}
     st.markdown(f"### {role_label[role]}")
@@ -162,27 +156,28 @@ def render_card(role, data, idx):
     vote_status = st.session_state.votes.get(f"{role}_{idx}", "neutral")
     c1, c2 = st.columns(2)
     with c1:
-        label = T["voted_support"][lang] if vote_status == "like" else T["support"][lang]
+        label = T["voted_support"] if vote_status == "like" else T["support"]
         if st.button(label, key=f"like_{role}_{idx}"):
             handle_vote(role, idx, "like")
     with c2:
-        label = T["voted_oppose"][lang] if vote_status == "dislike" else T["oppose"][lang]
+        label = T["voted_oppose"] if vote_status == "dislike" else T["oppose"]
         if st.button(label, key=f"dislike_{role}_{idx}"):
             handle_vote(role, idx, "dislike")
 
-    if st.toggle(T["thinking_train"][lang], key=f"train_{role}_{idx}"):
+    if st.toggle(T["thinking_train"], key=f"train_{role}_{idx}"):
         st.markdown(data["card_2"]["content"]["thinking_path"])
         st.markdown(data["card_2"]["content"]["training_tip"])
 
-# ✅ 12. 展示历史轮次
+# ✅ Show past rounds
 for i, r in enumerate(st.session_state.rounds):
-    st.markdown(f"## 🎯 {T['round_title'][lang]} {i+1}")
+    st.markdown(f"## 🎯 {T['round_title']} {i+1}")
     col1, col2 = st.columns(2)
     with col1: render_card("yellow", r["yellow"], i)
     with col2: render_card("black", r["black"], i)
 
-# ✅ 13. 新一轮交互触发
-if st.button(T["start"][lang] if not st.session_state.rounds else T["continue"][lang]) and question:
+# ✅ Trigger new round
+yellow = black = None
+if st.button(T["start"] if not st.session_state.rounds else T["continue"]) and question:
     prev = st.session_state.rounds
     yellow_vote = st.session_state.votes.get(f"yellow_{len(prev)-1}", "neutral") if prev else "neutral"
     black_vote = st.session_state.votes.get(f"black_{len(prev)-1}", "neutral") if prev else "neutral"
@@ -208,8 +203,8 @@ if st.button(T["start"][lang] if not st.session_state.rounds else T["continue"][
     st.session_state.rounds.append({"yellow": yellow, "black": black})
     st.rerun()
 
-# ✅ 14. 最终蓝帽总结
-if st.button(T["summarize"][lang]) and st.session_state.rounds:
+# ✅ Final summary
+if st.button(T["summarize"]) and st.session_state.rounds:
     if not st.session_state.final_summary:
         last = st.session_state.rounds[-1]
         y_view = last["yellow"]["card_1"]["content"]["viewpoint"]
@@ -226,5 +221,5 @@ if st.button(T["summarize"][lang]) and st.session_state.rounds:
             summary = safe_json_parse(blue_raw, "Blue Hat")
             st.session_state.final_summary = summary["card"]["content"]
 
-    st.markdown(f"### {T['final_summary'][lang]}")
+    st.markdown(f"### {T['final_summary']}")
     st.markdown(st.session_state.final_summary)
